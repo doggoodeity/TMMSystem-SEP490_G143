@@ -15,11 +15,11 @@ public class CorsConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**") // áp dụng cho tất cả endpoint
                         .allowedOriginPatterns("*") // cho phép mọi origin
-                        .allowedMethods("*")
-                        .allowedHeaders("*")
-                        .allowCredentials(true);
+                        .allowedMethods("*")        // GET, POST, PUT, DELETE...
+                        .allowedHeaders("*")        // mọi header
+                        .exposedHeaders("Authorization", "Content-Disposition") // expose header cho FE
+                        .allowCredentials(true);    // cho phép cookie/token
             }
         };
     }
 }
-
