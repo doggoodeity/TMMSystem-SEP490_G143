@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tmmsystem.dto.auth.LoginRequest;
 import tmmsystem.dto.auth.LoginResponse;
+import tmmsystem.dto.auth.ChangePasswordRequest;
 import tmmsystem.service.UserService;
 
 @RestController
@@ -18,5 +19,15 @@ public class AuthController {
         LoginResponse res = userService.authenticate(req.email(), req.password());
         if (res == null) return ResponseEntity.status(401).body("Invalid credentials or inactive");
         return ResponseEntity.ok(res);
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest req){
+        try {
+            userService.changePassword(req);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
     }
 }

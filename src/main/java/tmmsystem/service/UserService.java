@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tmmsystem.dto.UserDto;
 import tmmsystem.dto.auth.LoginResponse;
+import tmmsystem.dto.auth.ChangePasswordRequest;
 import tmmsystem.entity.Role;
 import tmmsystem.entity.User;
 import tmmsystem.mapper.UserMapper;
@@ -40,6 +41,24 @@ public class UserService {
     public void setActive(Long id, boolean active){
         User u = userRepo.findById(id).orElseThrow();
         u.setActive(active);
+    }
+
+    @Transactional
+    public void changePassword(ChangePasswordRequest request) {
+        User user = userRepo.findByEmail(request.email())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (!Boolean.TRUE.equals(user.getActive())) {
+            throw new RuntimeException("User is inactive");
+        }
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+        if (request.newPassword() == null || request.newPassword().isBlank()) {
+            throw new RuntimeException("New password must not be empty");
+        }
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        // save is optional due to transactional dirty checking but keep explicit
+        userRepo.save(user);
     }
 
 

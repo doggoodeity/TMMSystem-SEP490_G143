@@ -2,15 +2,19 @@ package tmmsystem.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import tmmsystem.entity.Role;
 import tmmsystem.entity.User;
 import tmmsystem.repository.RoleRepository;
 import tmmsystem.repository.UserRepository;
 
+
 @Component
 public class DataInitializer implements CommandLineRunner {
-    
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @Autowired
     private RoleRepository roleRepository;
     
@@ -69,7 +73,9 @@ public class DataInitializer implements CommandLineRunner {
         User adminUser = new User();
         adminUser.setName("System Administrator");
         adminUser.setEmail("admin@tmm.com");
-        adminUser.setPassword("admin123"); // Plain text tạm thời
+        adminUser.setPassword(passwordEncoder.encode("admin123"));
+
+
         adminUser.setPhoneNumber("+84 123 456 789");
         adminUser.setAvatar("https://via.placeholder.com/150/0000FF/FFFFFF?text=Admin");
         adminUser.setActive(true);
@@ -81,7 +87,8 @@ public class DataInitializer implements CommandLineRunner {
         User salesUser = new User();
         salesUser.setName("Sales Manager");
         salesUser.setEmail("sales@tmm.com");
-        salesUser.setPassword("sales123");
+        salesUser.setPassword(passwordEncoder.encode("sales123"));
+
         salesUser.setPhoneNumber("+84 987 654 321");
         salesUser.setAvatar("https://via.placeholder.com/150/00FF00/FFFFFF?text=Sales");
         salesUser.setActive(true);
@@ -93,7 +100,8 @@ public class DataInitializer implements CommandLineRunner {
         User managerUser = new User();
         managerUser.setName("Project Manager");
         managerUser.setEmail("manager@tmm.com");
-        managerUser.setPassword("manager123");
+        managerUser.setPassword(passwordEncoder.encode("manager123"));
+
         managerUser.setPhoneNumber("+84 555 123 456");
         managerUser.setAvatar("https://via.placeholder.com/150/FFA500/FFFFFF?text=Manager");
         managerUser.setActive(true);
@@ -105,7 +113,8 @@ public class DataInitializer implements CommandLineRunner {
         User regularUser = new User();
         regularUser.setName("John Doe");
         regularUser.setEmail("john.doe@tmm.com");
-        regularUser.setPassword("user123");
+        regularUser.setPassword(passwordEncoder.encode("user123"));
+
         regularUser.setPhoneNumber("+84 111 222 333");
         regularUser.setAvatar("https://via.placeholder.com/150/FF0000/FFFFFF?text=User");
         regularUser.setActive(true);
@@ -117,7 +126,7 @@ public class DataInitializer implements CommandLineRunner {
         User anotherUser = new User();
         anotherUser.setName("Jane Smith");
         anotherUser.setEmail("jane.smith@tmm.com");
-        anotherUser.setPassword("user456");
+        anotherUser.setPassword(passwordEncoder.encode("user456"));
         anotherUser.setPhoneNumber("+84 444 555 666");
         anotherUser.setAvatar("https://via.placeholder.com/150/800080/FFFFFF?text=Jane");
         anotherUser.setActive(false);
