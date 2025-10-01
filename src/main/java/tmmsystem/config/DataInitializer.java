@@ -72,7 +72,7 @@ public class DataInitializer implements CommandLineRunner {
         // Tạo Admin User
         User adminUser = new User();
         adminUser.setName("System Administrator");
-        adminUser.setEmail("admin@tmm.com");
+        adminUser.setEmail("hatsunemikudangyeu06102004@gmail.com");
         adminUser.setPassword(passwordEncoder.encode("admin123"));
 
 

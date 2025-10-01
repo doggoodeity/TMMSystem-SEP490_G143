@@ -33,10 +33,4 @@ public class User extends BaseEntity {
     @JoinColumn(name = "role_id")
     private Role role;
 
-    // Password reset flow
-    @Column(name = "reset_code", length = 12)
-    private String resetCode;
-
-    @Column(name = "reset_code_expires_at")
-    private java.time.Instant resetCodeExpiresAt;
 }
