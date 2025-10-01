@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tmmsystem.dto.UserDto;
 import tmmsystem.dto.auth.LoginResponse;
+import tmmsystem.dto.auth.ForgotPasswordRequest;
+import tmmsystem.dto.auth.VerifyResetCodeRequest;
 import tmmsystem.dto.auth.ChangePasswordRequest;
 import tmmsystem.entity.Role;
 import tmmsystem.entity.User;
@@ -23,12 +25,14 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final MailService mailService;
     
-    public UserService(UserRepository userRepo, RoleRepository roleRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public UserService(UserRepository userRepo, RoleRepository roleRepository, PasswordEncoder passwordEncoder, JwtService jwtService, MailService mailService) {
         this.userRepo = userRepo;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.mailService = mailService;
     }
 
     public LoginResponse authenticate(String email, String password){
@@ -71,8 +75,64 @@ public class UserService {
         userRepo.save(user);
     }
 
+    // ===== Forgot password flow =====
+    @Transactional
+    public void requestPasswordReset(ForgotPasswordRequest request) {
+        User user = userRepo.findByEmail(request.email())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (!Boolean.TRUE.equals(user.getActive())) {
+            throw new RuntimeException("User is inactive");
+        }
+        String code = generateNumericCode(6);
+        user.setResetCode(code);
+        user.setResetCodeExpiresAt(java.time.Instant.now().plus(java.time.Duration.ofMinutes(10)));
+        userRepo.save(user);
 
+        String subject = "Password Reset Code";
+        String body = "Your verification code is: " + code + "\nThis code expires in 10 minutes.";
+        mailService.send(user.getEmail(), subject, body);
+    }
 
+    @Transactional
+    public void verifyCodeAndResetPassword(VerifyResetCodeRequest request) {
+        User user = userRepo.findByEmail(request.email())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (user.getResetCode() == null || user.getResetCodeExpiresAt() == null) {
+            throw new RuntimeException("No reset requested");
+        }
+        if (java.time.Instant.now().isAfter(user.getResetCodeExpiresAt())) {
+            throw new RuntimeException("Reset code expired");
+        }
+        if (!user.getResetCode().equals(request.code())) {
+            throw new RuntimeException("Invalid code");
+        }
+        String newPasswordPlain = generateRandomPassword(10);
+        user.setPassword(passwordEncoder.encode(newPasswordPlain));
+        user.setResetCode(null);
+        user.setResetCodeExpiresAt(null);
+        userRepo.save(user);
+
+        mailService.send(user.getEmail(), "Your new password", "Your new password is: " + newPasswordPlain);
+    }
+
+    private String generateNumericCode(int length) {
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            sb.append(random.nextInt(10));
+        }
+        return sb.toString();
+    }
+
+    private String generateRandomPassword(int length) {
+        final String chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$%";
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
+    }
     public List<UserDto> getAllUsers() {
         return userRepo.findAll()
                 .stream()

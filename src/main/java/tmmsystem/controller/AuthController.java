@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.*;
 import tmmsystem.dto.auth.LoginRequest;
 import tmmsystem.dto.auth.LoginResponse;
 import tmmsystem.dto.auth.ChangePasswordRequest;
+import tmmsystem.dto.auth.ForgotPasswordRequest;
+import tmmsystem.dto.auth.VerifyResetCodeRequest;
 import tmmsystem.service.UserService;
 
 @RestController
@@ -25,6 +27,26 @@ public class AuthController {
     public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest req){
         try {
             userService.changePassword(req);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest req){
+        try {
+            userService.requestPasswordReset(req);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+
+    @PostMapping("/verify-reset-code")
+    public ResponseEntity<?> verifyResetCode(@RequestBody VerifyResetCodeRequest req){
+        try {
+            userService.verifyCodeAndResetPassword(req);
             return ResponseEntity.ok().build();
         } catch (RuntimeException ex) {
             return ResponseEntity.badRequest().body(ex.getMessage());
