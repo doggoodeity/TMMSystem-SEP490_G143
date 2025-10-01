@@ -12,6 +12,7 @@ import tmmsystem.entity.User;
 import tmmsystem.mapper.UserMapper;
 import tmmsystem.repository.RoleRepository;
 import tmmsystem.repository.UserRepository;
+import tmmsystem.util.JwtService;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,17 +22,26 @@ public class UserService {
     private final UserRepository userRepo;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
     
-    public UserService(UserRepository userRepo, RoleRepository roleRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepo, RoleRepository roleRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
         this.userRepo = userRepo;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     public LoginResponse authenticate(String email, String password){
         return userRepo.findByEmail(email)
                 .filter(u -> passwordEncoder.matches(password, u.getPassword()) && Boolean.TRUE.equals(u.getActive()))
-                .map(u -> new LoginResponse(u.getId(), u.getName(), u.getEmail(), u.getRole().getName(), u.getActive()))
+                .map(u -> {
+                    String token = jwtService.generateToken(u.getEmail(), java.util.Map.of(
+                            "uid", u.getId(),
+                            "role", u.getRole().getName()
+                    ));
+                    long expiresIn = jwtService.getExpirationMillis();
+                    return new LoginResponse(u.getId(), u.getName(), u.getEmail(), u.getRole().getName(), u.getActive(), token, expiresIn);
+                })
                 .orElse(null);
     }
 
