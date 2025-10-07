@@ -15,10 +15,10 @@ public abstract class BaseEntity {
     private Long id;
 
     @CreationTimestamp
-    @Column(name = "create_at", updatable = false)
-    private Instant createAt;
+    @Column(name = "created_at", updatable = false)
+    private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "update_at")
-    private Instant updateAt;
+    @Column(name = "updated_at")
+    private Instant updatedAt;
 }

@@ -10,7 +10,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tmmsystem.entity.User;
+import tmmsystem.entity.CustomerUser;
 import tmmsystem.repository.UserRepository;
+import tmmsystem.repository.CustomerUserRepository;
 import tmmsystem.util.JwtService;
 
 import java.io.IOException;
@@ -21,10 +23,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final CustomerUserRepository customerUserRepository;
 
-    public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository) {
+    public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository, CustomerUserRepository customerUserRepository) {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
+        this.customerUserRepository = customerUserRepository;
     }
 
     @Override
@@ -44,6 +48,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + roleName))
                         );
                         SecurityContextHolder.getContext().setAuthentication(authentication);
+                    } else {
+                        CustomerUser cu = customerUserRepository.findByEmail(email).orElse(null);
+                        if (cu != null && Boolean.TRUE.equals(cu.getActive()) && jwtService.isTokenValid(token, email)) {
+                            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                    email,
+                                    null,
+                                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER_USER"))
+                            );
+                            SecurityContextHolder.getContext().setAuthentication(authentication);
+                        }
                     }
                 }
             } catch (Exception ignored) {

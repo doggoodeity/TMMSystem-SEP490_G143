@@ -5,10 +5,13 @@ import jakarta.persistence.*;
 import lombok.Getter; import lombok.Setter;
 import tmmsystem.common.BaseEntity;
 
-@Entity @Table(name = "roles")
+@Entity @Table(name = "role")
 @Getter @Setter
 public class Role extends BaseEntity {
     @Column(nullable = false, unique = true, length = 50)
     private String name;            // ADMIN, SALES, ...
+    @Column(columnDefinition = "text")
     private String description;
+    @Column(name = "is_active")
+    private Boolean active = true;
 }

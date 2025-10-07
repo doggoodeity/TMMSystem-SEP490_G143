@@ -11,11 +11,9 @@ import tmmsystem.dto.auth.VerifyResetCodeRequest;
 import tmmsystem.dto.auth.ChangePasswordRequest;
 import tmmsystem.entity.Role;
 import tmmsystem.entity.User;
-import tmmsystem.entity.PasswordResetToken;
 import tmmsystem.mapper.UserMapper;
 import tmmsystem.repository.RoleRepository;
 import tmmsystem.repository.UserRepository;
-import tmmsystem.repository.PasswordResetTokenRepository;
 import tmmsystem.util.JwtService;
 
 import java.util.List;
@@ -28,15 +26,13 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final MailService mailService;
-    private final PasswordResetTokenRepository passwordResetTokenRepository;
     
-    public UserService(UserRepository userRepo, RoleRepository roleRepository, PasswordEncoder passwordEncoder, JwtService jwtService, MailService mailService, PasswordResetTokenRepository passwordResetTokenRepository) {
+    public UserService(UserRepository userRepo, RoleRepository roleRepository, PasswordEncoder passwordEncoder, JwtService jwtService, MailService mailService) {
         this.userRepo = userRepo;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.mailService = mailService;
-        this.passwordResetTokenRepository = passwordResetTokenRepository;
     }
 
     public LoginResponse authenticate(String email, String password){
@@ -87,16 +83,11 @@ public class UserService {
         if (!Boolean.TRUE.equals(user.getActive())) {
             throw new RuntimeException("User is inactive");
         }
-        // Clean previous/expired tokens for this email
-        passwordResetTokenRepository.deleteByEmailOrExpiresAtBefore(user.getEmail(), java.time.Instant.now());
-
+        // Generate and store reset code inline on user
         String code = generateNumericCode(6);
-        PasswordResetToken token = new PasswordResetToken();
-        token.setEmail(user.getEmail());
-        token.setCode(code);
-        token.setExpiresAt(java.time.Instant.now().plus(java.time.Duration.ofMinutes(10)));
-        token.setUsed(false);
-        passwordResetTokenRepository.save(token);
+        user.setResetCode(code);
+        user.setResetCodeExpiresAt(java.time.Instant.now().plus(java.time.Duration.ofMinutes(10)));
+        userRepo.save(user);
 
         String subject = "Password Reset Code";
         String body = "Your verification code is: " + code + "\nThis code expires in 10 minutes.";
@@ -108,19 +99,20 @@ public class UserService {
         User user = userRepo.findByEmail(request.email())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        PasswordResetToken token = passwordResetTokenRepository
-                .findByEmailAndCodeAndUsedIsFalse(user.getEmail(), request.code())
-                .orElseThrow(() -> new RuntimeException("Invalid or used code"));
+        if (user.getResetCode() == null || !user.getResetCode().equals(request.code())) {
+            throw new RuntimeException("Invalid or used code");
+        }
 
-        if (java.time.Instant.now().isAfter(token.getExpiresAt())) {
+        if (user.getResetCodeExpiresAt() == null || java.time.Instant.now().isAfter(user.getResetCodeExpiresAt())) {
             throw new RuntimeException("Reset code expired");
         }
 
         String newPasswordPlain = generateRandomPassword(10);
         user.setPassword(passwordEncoder.encode(newPasswordPlain));
+        // clear reset code
+        user.setResetCode(null);
+        user.setResetCodeExpiresAt(null);
         userRepo.save(user);
-        token.setUsed(true);
-        passwordResetTokenRepository.save(token);
 
         mailService.send(user.getEmail(), "Your new password", "Your new password is: " + newPasswordPlain);
     }
