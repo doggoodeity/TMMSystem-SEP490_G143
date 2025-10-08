@@ -2,7 +2,10 @@ package tmmsystem.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import jakarta.validation.Valid;
 import tmmsystem.dto.CustomerDto;
+import tmmsystem.dto.CustomerCreateRequest;
 import tmmsystem.entity.Customer;
 import tmmsystem.mapper.CustomerMapper;
 import tmmsystem.service.CustomerService;
@@ -12,6 +15,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/v1/customers")
+@Validated
 public class CustomerController {
     private final CustomerService service;
     private final CustomerMapper mapper;
@@ -24,8 +28,20 @@ public class CustomerController {
     public CustomerDto get(@PathVariable Long id) { return mapper.toDto(service.findById(id)); }
 
     @PostMapping
-    public CustomerDto create(@RequestBody CustomerDto body) {
-        Customer created = service.create(mapper.toEntity(body), body.getCreatedById());
+    public CustomerDto create(@Valid @RequestBody CustomerCreateRequest request) {
+        // Tạo Customer entity từ request (không có ID và timestamp)
+        Customer customer = new Customer();
+        customer.setCompanyName(request.companyName());
+        customer.setContactPerson(request.contactPerson());
+        customer.setEmail(request.email());
+        customer.setPhoneNumber(request.phoneNumber());
+        customer.setAddress(request.address());
+        customer.setTaxCode(request.taxCode());
+        customer.setActive(request.isActive() != null ? request.isActive() : true);
+        customer.setVerified(request.isVerified() != null ? request.isVerified() : false);
+        customer.setRegistrationType(request.registrationType() != null ? request.registrationType() : "SALES_CREATED");
+        
+        Customer created = service.create(customer, request.createdById());
         return mapper.toDto(created);
     }
 

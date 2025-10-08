@@ -3,6 +3,8 @@ package tmmsystem.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import jakarta.validation.Valid;
 import tmmsystem.dto.auth.LoginRequest;
 import tmmsystem.dto.auth.LoginResponse;
 import tmmsystem.dto.auth.ChangePasswordRequest;
@@ -15,6 +17,7 @@ import tmmsystem.entity.CustomerUser;
 
 @RestController
 @RequestMapping("/v1/auth")
+@Validated
 public class AuthController {
     private final UserService userService;
     private final CustomerUserService customerUserService;
@@ -61,18 +64,26 @@ public class AuthController {
     }
 
     @PostMapping("/customer/register")
-    public ResponseEntity<?> registerCustomerUser(@RequestBody CustomerUserRegisterRequest req){
+    public ResponseEntity<?> registerCustomerUser(@Valid @RequestBody CustomerUserRegisterRequest req){
         try {
+            // Kiểm tra email đã tồn tại chưa
+            if (customerUserService.existsByEmail(req.email())) {
+                return ResponseEntity.badRequest().body("Email đã được sử dụng");
+            }
+            
             CustomerUser cu = new CustomerUser();
-            cu.setEmail(req.email());
+            cu.setEmail(req.email().toLowerCase().trim());
             cu.setPassword(req.password());
-            cu.setName(req.name());
+            cu.setName(req.name().trim());
             cu.setPhoneNumber(req.phoneNumber());
-            cu.setPosition(req.position());
-            customerUserService.create(cu, req.customerId());
+            cu.setPosition(req.position() != null ? req.position().trim() : null);
+            
+            CustomerUser savedUser = customerUserService.create(cu, req.customerId());
             return ResponseEntity.ok("Vui lòng kiểm tra email để xác minh tài khoản");
         } catch (RuntimeException ex) {
-            return ResponseEntity.badRequest().body(ex.getMessage());
+            return ResponseEntity.badRequest().body("Lỗi đăng ký: " + ex.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body("Lỗi hệ thống: " + ex.getMessage());
         }
     }
 

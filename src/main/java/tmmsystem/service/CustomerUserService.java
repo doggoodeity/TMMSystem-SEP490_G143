@@ -32,22 +32,41 @@ public class CustomerUserService {
 
     public List<CustomerUser> findAll() { return customerUserRepository.findAll(); }
     public CustomerUser findById(Long id) { return customerUserRepository.findById(id).orElseThrow(); }
+    public boolean existsByEmail(String email) { return customerUserRepository.existsByEmail(email); }
 
     @Transactional
     public CustomerUser create(CustomerUser user, Long customerId) {
-        Customer customer = customerRepository.findById(customerId).orElseThrow();
+        // Kiểm tra customer tồn tại
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer không tồn tại với ID: " + customerId));
+        
+        // Kiểm tra email đã tồn tại
+        if (customerUserRepository.existsByEmail(user.getEmail())) {
+            throw new RuntimeException("Email đã được sử dụng");
+        }
+        
         user.setCustomer(customer);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        // generate email verification token
+        
+        // Generate email verification token
         String token = java.util.UUID.randomUUID().toString();
         user.setEmailVerificationToken(token);
+        
         CustomerUser saved = customerUserRepository.save(user);
-        // send verification email
-        String link = buildVerificationLink(token);
-        String body = "Xin chào " + saved.getName() + ",\n\n" +
-                "Vui lòng xác minh email bằng cách nhấp vào liên kết: " + link + "\n\n" +
-                "Nếu bạn không yêu cầu, vui lòng bỏ qua email này.";
-        mailService.send(saved.getEmail(), "Xác minh email", body);
+        
+        // Send verification email với error handling
+        try {
+            String link = buildVerificationLink(token);
+            String body = "Xin chào " + saved.getName() + ",\n\n" +
+                    "Vui lòng xác minh email bằng cách nhấp vào liên kết: " + link + "\n\n" +
+                    "Nếu bạn không yêu cầu, vui lòng bỏ qua email này.";
+            mailService.send(saved.getEmail(), "Xác minh email", body);
+        } catch (Exception ex) {
+            // Log error nhưng không rollback transaction
+            // User vẫn được tạo, có thể verify sau
+            System.err.println("Failed to send verification email: " + ex.getMessage());
+        }
+        
         return saved;
     }
 
@@ -94,10 +113,20 @@ public class CustomerUserService {
 
     @Transactional
     public void verifyEmail(String token) {
-        CustomerUser cu = customerUserRepository.findByEmailVerificationToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid or expired token"));
+        if (token == null || token.trim().isEmpty()) {
+            throw new RuntimeException("Token không hợp lệ");
+        }
+        
+        CustomerUser cu = customerUserRepository.findByEmailVerificationToken(token.trim())
+                .orElseThrow(() -> new RuntimeException("Token không hợp lệ hoặc đã hết hạn"));
+        
+        if (Boolean.TRUE.equals(cu.getVerified())) {
+            throw new RuntimeException("Email đã được xác minh trước đó");
+        }
+        
         cu.setVerified(true);
         cu.setEmailVerificationToken(null);
+        customerUserRepository.save(cu);
     }
 }
 
