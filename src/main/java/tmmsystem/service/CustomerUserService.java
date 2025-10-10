@@ -36,16 +36,19 @@ public class CustomerUserService {
 
     @Transactional
     public CustomerUser create(CustomerUser user, Long customerId) {
-        // Kiểm tra customer tồn tại
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new RuntimeException("Customer không tồn tại với ID: " + customerId));
-        
         // Kiểm tra email đã tồn tại
         if (customerUserRepository.existsByEmail(user.getEmail())) {
             throw new RuntimeException("Email đã được sử dụng");
         }
         
-        user.setCustomer(customer);
+        // Nếu có customerId, kiểm tra customer tồn tại
+        if (customerId != null) {
+            Customer customer = customerRepository.findById(customerId)
+                    .orElseThrow(() -> new RuntimeException("Customer không tồn tại với ID: " + customerId));
+            user.setCustomer(customer);
+        }
+        // Nếu không có customerId, user.setCustomer(null) - đã mặc định
+        
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         
         // Generate email verification token
@@ -127,6 +130,30 @@ public class CustomerUserService {
         cu.setVerified(true);
         cu.setEmailVerificationToken(null);
         customerUserRepository.save(cu);
+    }
+
+    @Transactional
+    public CustomerUser linkToCustomer(Long customerUserId, Long customerId) {
+        CustomerUser user = customerUserRepository.findById(customerUserId)
+                .orElseThrow(() -> new RuntimeException("CustomerUser không tồn tại"));
+        
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer không tồn tại"));
+        
+        user.setCustomer(customer);
+        return customerUserRepository.save(user);
+    }
+
+    public Long getUserIdFromToken(String token) {
+        try {
+            io.jsonwebtoken.Claims claims = jwtService.parseToken(token);
+            String email = claims.getSubject();
+            return customerUserRepository.findByEmail(email)
+                    .map(CustomerUser::getId)
+                    .orElseThrow(() -> new RuntimeException("Token không hợp lệ"));
+        } catch (Exception ex) {
+            throw new RuntimeException("Token không hợp lệ: " + ex.getMessage());
+        }
     }
 }
 

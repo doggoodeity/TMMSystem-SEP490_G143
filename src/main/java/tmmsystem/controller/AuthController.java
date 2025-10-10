@@ -13,7 +13,10 @@ import tmmsystem.dto.auth.VerifyResetCodeRequest;
 import tmmsystem.service.UserService;
 import tmmsystem.service.CustomerUserService;
 import tmmsystem.dto.auth.CustomerUserRegisterRequest;
+import tmmsystem.dto.CustomerCreateRequest;
 import tmmsystem.entity.CustomerUser;
+import tmmsystem.entity.Customer;
+import tmmsystem.service.CustomerService;
 
 @RestController
 @RequestMapping("/v1/auth")
@@ -21,7 +24,12 @@ import tmmsystem.entity.CustomerUser;
 public class AuthController {
     private final UserService userService;
     private final CustomerUserService customerUserService;
-    public AuthController(UserService s, CustomerUserService cus){ this.userService = s; this.customerUserService = cus; }
+    private final CustomerService customerService;
+    public AuthController(UserService s, CustomerUserService cus, CustomerService cs){ 
+        this.userService = s; 
+        this.customerUserService = cus; 
+        this.customerService = cs;
+    }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req){
@@ -74,14 +82,53 @@ public class AuthController {
             CustomerUser cu = new CustomerUser();
             cu.setEmail(req.email().toLowerCase().trim());
             cu.setPassword(req.password());
-            cu.setName(req.name().trim());
-            cu.setPhoneNumber(req.phoneNumber());
-            cu.setPosition(req.position() != null ? req.position().trim() : null);
+            cu.setName(null);
+            cu.setPhoneNumber(null);
+            cu.setPosition(null);
             
-            CustomerUser savedUser = customerUserService.create(cu, req.customerId());
+            CustomerUser savedUser = customerUserService.create(cu, null);
             return ResponseEntity.ok("Vui lòng kiểm tra email để xác minh tài khoản");
         } catch (RuntimeException ex) {
             return ResponseEntity.badRequest().body("Lỗi đăng ký: " + ex.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body("Lỗi hệ thống: " + ex.getMessage());
+        }
+    }
+
+    @PostMapping("/customer/create-company")
+    public ResponseEntity<?> createCompany(@Valid @RequestBody CustomerCreateRequest req, 
+                                         @RequestHeader("Authorization") String authHeader) {
+        try {
+            // Extract user ID from JWT token
+            String token = authHeader.replace("Bearer ", "");
+            Long userId = customerUserService.getUserIdFromToken(token);
+            
+            // Kiểm tra user đã có customer chưa
+            CustomerUser user = customerUserService.findById(userId);
+            if (user.getCustomer() != null) {
+                return ResponseEntity.badRequest().body("Bạn đã có công ty rồi");
+            }
+            
+            // Tạo Customer
+            Customer customer = new Customer();
+            customer.setCompanyName(req.companyName().trim());
+            customer.setContactPerson(req.contactPerson() != null ? req.contactPerson().trim() : null);
+            customer.setEmail(user.getEmail());
+            customer.setPhoneNumber(req.phoneNumber());
+            customer.setAddress(req.address());
+            customer.setTaxCode(req.taxCode());
+            customer.setActive(true);
+            customer.setVerified(false);
+            customer.setRegistrationType("SELF_REGISTERED");
+            
+            Customer savedCustomer = customerService.create(customer, null);
+            
+            // Liên kết CustomerUser với Customer
+            customerUserService.linkToCustomer(userId, savedCustomer.getId());
+            
+            return ResponseEntity.ok("Tạo công ty thành công");
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body("Lỗi tạo công ty: " + ex.getMessage());
         } catch (Exception ex) {
             return ResponseEntity.internalServerError().body("Lỗi hệ thống: " + ex.getMessage());
         }

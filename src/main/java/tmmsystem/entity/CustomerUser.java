@@ -13,14 +13,14 @@ public class CustomerUser extends BaseEntity {
     private String email;
     @Column(nullable = false, length = 255)
     private String password;
-    @Column(nullable = false, length = 150)
+    @Column(nullable = true, length = 150)
     private String name;
     @Column(name = "phone_number", length = 30)
     private String phoneNumber;
     @Column(length = 100)
     private String position;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "customer_id")
     private Customer customer;
 

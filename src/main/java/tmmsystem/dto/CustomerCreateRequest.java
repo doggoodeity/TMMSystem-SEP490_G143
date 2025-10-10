@@ -1,8 +1,6 @@
 package tmmsystem.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 
 public record CustomerCreateRequest(
         @NotBlank(message = "Tên công ty không được để trống")
@@ -12,12 +10,14 @@ public record CustomerCreateRequest(
         @Size(max = 150, message = "Người liên hệ không được quá 150 ký tự")
         String contactPerson,
         
+        @Email(message = "Email công ty không hợp lệ")
         @Size(max = 150, message = "Email không được quá 150 ký tự")
         String email,
         
         @Size(max = 30, message = "Số điện thoại không được quá 30 ký tự")
         String phoneNumber,
         
+        @Size(max = 1000, message = "Địa chỉ không được quá 1000 ký tự")
         String address,
         
         @Size(max = 50, message = "Mã số thuế không được quá 50 ký tự")
@@ -25,10 +25,7 @@ public record CustomerCreateRequest(
         
         Boolean isActive,
         Boolean isVerified,
-        
-        @Size(max = 20, message = "Loại đăng ký không được quá 20 ký tự")
+        @Size(max = 20, message = "registrationType không được quá 20 ký tự")
         String registrationType,
-        
-        @NotNull(message = "Created by ID không được để trống")
         Long createdById
 ) {}
