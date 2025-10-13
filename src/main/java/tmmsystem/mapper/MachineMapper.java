@@ -14,9 +14,11 @@ public class MachineMapper {
         dto.setName(e.getName());
         dto.setType(e.getType());
         dto.setStatus(e.getStatus());
+        dto.setLocation(e.getLocation());
         dto.setSpecifications(e.getSpecifications());
         dto.setLastMaintenanceAt(e.getLastMaintenanceAt());
         dto.setNextMaintenanceAt(e.getNextMaintenanceAt());
+        dto.setMaintenanceIntervalDays(e.getMaintenanceIntervalDays());
         dto.setCreatedAt(e.getCreatedAt());
         dto.setUpdatedAt(e.getUpdatedAt());
         return dto;
@@ -30,9 +32,11 @@ public class MachineMapper {
         e.setName(dto.getName());
         e.setType(dto.getType());
         e.setStatus(dto.getStatus());
+        e.setLocation(dto.getLocation());
         e.setSpecifications(dto.getSpecifications());
         e.setLastMaintenanceAt(dto.getLastMaintenanceAt());
         e.setNextMaintenanceAt(dto.getNextMaintenanceAt());
+        e.setMaintenanceIntervalDays(dto.getMaintenanceIntervalDays());
         return e;
     }
 }

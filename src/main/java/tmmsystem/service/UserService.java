@@ -50,6 +50,7 @@ public class UserService {
     }
 
     public List<User> findAll(){ return userRepo.findAll(); }
+    public boolean existsByEmail(String email) { return userRepo.existsByEmail(email); }
 
     @Transactional
     public void setActive(Long id, boolean active){

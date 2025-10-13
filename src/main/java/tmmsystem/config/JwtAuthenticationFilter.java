@@ -10,9 +10,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tmmsystem.entity.User;
-import tmmsystem.entity.CustomerUser;
+import tmmsystem.entity.Customer;
 import tmmsystem.repository.UserRepository;
-import tmmsystem.repository.CustomerUserRepository;
+import tmmsystem.repository.CustomerRepository;
 import tmmsystem.util.JwtService;
 
 import java.io.IOException;
@@ -23,12 +23,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
-    private final CustomerUserRepository customerUserRepository;
+    private final CustomerRepository customerRepository;
 
-    public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository, CustomerUserRepository customerUserRepository) {
+    public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository, CustomerRepository customerRepository) {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
-        this.customerUserRepository = customerUserRepository;
+        this.customerRepository = customerRepository;
     }
 
     @Override
@@ -49,12 +49,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         );
                         SecurityContextHolder.getContext().setAuthentication(authentication);
                     } else {
-                        CustomerUser cu = customerUserRepository.findByEmail(email).orElse(null);
+                        Customer cu = customerRepository.findByEmail(email).orElse(null);
                         if (cu != null && Boolean.TRUE.equals(cu.getActive()) && jwtService.isTokenValid(token, email)) {
                             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                                     email,
                                     null,
-                                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER_USER"))
+                                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER"))
                             );
                             SecurityContextHolder.getContext().setAuthentication(authentication);
                         }

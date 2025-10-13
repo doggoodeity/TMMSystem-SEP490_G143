@@ -47,17 +47,13 @@ public class DataInitializer implements CommandLineRunner {
         salesRole.setDescription("Sales role with access to customer management and sales features");
         roleRepository.save(salesRole);
         
-        // Tạo role MANAGER
-        Role managerRole = new Role();
-        managerRole.setName("MANAGER");
-        managerRole.setDescription("Manager role with access to team management and reporting");
-        roleRepository.save(managerRole);
-        
-        // Tạo role USER
-        Role userRole = new Role();
-        userRole.setName("USER");
-        userRole.setDescription("Regular user role with basic access");
-        roleRepository.save(userRole);
+        // Tạo các role theo schema mới
+        for (String roleName : new String[]{"PLANNING","DIRECTOR","TECHNICAL","PRODUCTION","QA","WAREHOUSE"}) {
+            Role r = new Role();
+            r.setName(roleName);
+            r.setDescription(roleName + " role");
+            roleRepository.save(r);
+        }
         
         System.out.println("Sample roles created successfully!");
     }
@@ -66,8 +62,8 @@ public class DataInitializer implements CommandLineRunner {
         // Lấy các role đã tạo
         Role adminRole = roleRepository.findByName("ADMIN").orElse(null);
         Role salesRole = roleRepository.findByName("SALES").orElse(null);
-        Role managerRole = roleRepository.findByName("MANAGER").orElse(null);
-        Role userRole = roleRepository.findByName("USER").orElse(null);
+        Role managerRole = roleRepository.findByName("PLANNING").orElse(null);
+        Role userRole = roleRepository.findByName("TECHNICAL").orElse(null);
         
         // Tạo Admin User
         User adminUser = new User();

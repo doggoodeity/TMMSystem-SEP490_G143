@@ -12,6 +12,9 @@ public class ProductCategoryMapper {
         dto.setId(e.getId());
         dto.setName(e.getName());
         dto.setDescription(e.getDescription());
+        dto.setParentId(e.getParent() != null ? e.getParent().getId() : null);
+        dto.setDisplayOrder(e.getDisplayOrder());
+        dto.setIsActive(e.getActive());
         dto.setCreatedAt(e.getCreatedAt());
         dto.setUpdatedAt(e.getUpdatedAt());
         return dto;
@@ -23,6 +26,9 @@ public class ProductCategoryMapper {
         e.setId(dto.getId());
         e.setName(dto.getName());
         e.setDescription(dto.getDescription());
+        // parent relation should be set in service if needed
+        e.setDisplayOrder(dto.getDisplayOrder());
+        e.setActive(dto.getIsActive());
         return e;
     }
 }

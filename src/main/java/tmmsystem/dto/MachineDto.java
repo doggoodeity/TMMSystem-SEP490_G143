@@ -12,9 +12,11 @@ public class MachineDto {
     private String name;
     private String type;
     private String status;
+    private String location;
     private String specifications;
     private Instant lastMaintenanceAt;
     private Instant nextMaintenanceAt;
+    private Integer maintenanceIntervalDays;
     private Instant createdAt;
     private Instant updatedAt;
 }

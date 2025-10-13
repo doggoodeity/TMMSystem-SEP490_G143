@@ -1,8 +1,13 @@
 package tmmsystem.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tmmsystem.dto.MachineDto;
+import tmmsystem.dto.machine.MachineRequest;
 import tmmsystem.mapper.MachineMapper;
 import tmmsystem.service.MachineService;
 
@@ -22,11 +27,44 @@ public class MachineController {
     @GetMapping("/{id}")
     public MachineDto get(@PathVariable Long id) { return mapper.toDto(service.findById(id)); }
 
+    @Operation(summary = "Tạo máy")
     @PostMapping
-    public MachineDto create(@RequestBody MachineDto body) { return mapper.toDto(service.create(mapper.toEntity(body))); }
+    public MachineDto create(
+            @RequestBody(description = "Payload tạo máy", required = true,
+                    content = @Content(schema = @Schema(implementation = MachineRequest.class)))
+            @org.springframework.web.bind.annotation.RequestBody MachineRequest body) {
+        tmmsystem.entity.Machine e = new tmmsystem.entity.Machine();
+        e.setCode(body.getCode());
+        e.setName(body.getName());
+        e.setType(body.getType());
+        e.setStatus(body.getStatus() != null ? body.getStatus() : "AVAILABLE");
+        e.setLocation(body.getLocation());
+        e.setSpecifications(body.getSpecifications());
+        e.setLastMaintenanceAt(body.getLastMaintenanceAt());
+        e.setNextMaintenanceAt(body.getNextMaintenanceAt());
+        e.setMaintenanceIntervalDays(body.getMaintenanceIntervalDays() != null ? body.getMaintenanceIntervalDays() : 90);
+        return mapper.toDto(service.create(e));
+    }
 
+    @Operation(summary = "Cập nhật máy")
     @PutMapping("/{id}")
-    public MachineDto update(@PathVariable Long id, @RequestBody MachineDto body) { return mapper.toDto(service.update(id, mapper.toEntity(body))); }
+    public MachineDto update(
+            @PathVariable Long id,
+            @RequestBody(description = "Payload cập nhật máy", required = true,
+                    content = @Content(schema = @Schema(implementation = MachineRequest.class)))
+            @org.springframework.web.bind.annotation.RequestBody MachineRequest body) {
+        tmmsystem.entity.Machine e = new tmmsystem.entity.Machine();
+        e.setCode(body.getCode());
+        e.setName(body.getName());
+        e.setType(body.getType());
+        e.setStatus(body.getStatus());
+        e.setLocation(body.getLocation());
+        e.setSpecifications(body.getSpecifications());
+        e.setLastMaintenanceAt(body.getLastMaintenanceAt());
+        e.setNextMaintenanceAt(body.getNextMaintenanceAt());
+        e.setMaintenanceIntervalDays(body.getMaintenanceIntervalDays());
+        return mapper.toDto(service.update(id, e));
+    }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
