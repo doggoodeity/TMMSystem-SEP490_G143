@@ -1,0 +1,110 @@
+package tmmsystem.service;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import tmmsystem.entity.*;
+import tmmsystem.repository.*;
+
+import java.util.List;
+
+@Service
+public class ProductionService {
+    private final ProductionOrderRepository poRepo;
+    private final ProductionOrderDetailRepository podRepo;
+    private final TechnicalSheetRepository techRepo;
+    private final WorkOrderRepository woRepo;
+    private final WorkOrderDetailRepository wodRepo;
+    private final ProductionStageRepository stageRepo;
+
+    public ProductionService(ProductionOrderRepository poRepo,
+                             ProductionOrderDetailRepository podRepo,
+                             TechnicalSheetRepository techRepo,
+                             WorkOrderRepository woRepo,
+                             WorkOrderDetailRepository wodRepo,
+                             ProductionStageRepository stageRepo) {
+        this.poRepo = poRepo; this.podRepo = podRepo; this.techRepo = techRepo;
+        this.woRepo = woRepo; this.wodRepo = wodRepo; this.stageRepo = stageRepo;
+    }
+
+    // Production Order
+    public List<ProductionOrder> findAllPO() { return poRepo.findAll(); }
+    public ProductionOrder findPO(Long id) { return poRepo.findById(id).orElseThrow(); }
+    @Transactional public ProductionOrder createPO(ProductionOrder po) { return poRepo.save(po); }
+    @Transactional public ProductionOrder updatePO(Long id, ProductionOrder upd) {
+        ProductionOrder e = poRepo.findById(id).orElseThrow();
+        e.setPoNumber(upd.getPoNumber()); e.setContract(upd.getContract()); e.setTotalQuantity(upd.getTotalQuantity());
+        e.setPlannedStartDate(upd.getPlannedStartDate()); e.setPlannedEndDate(upd.getPlannedEndDate());
+        e.setStatus(upd.getStatus()); e.setPriority(upd.getPriority()); e.setNotes(upd.getNotes());
+        e.setCreatedBy(upd.getCreatedBy()); e.setApprovedBy(upd.getApprovedBy()); e.setApprovedAt(upd.getApprovedAt());
+        return e;
+    }
+    public void deletePO(Long id) { poRepo.deleteById(id); }
+
+    // PO Detail
+    public List<ProductionOrderDetail> findPODetails(Long poId) { return podRepo.findByProductionOrderId(poId); }
+    public ProductionOrderDetail findPODetail(Long id) { return podRepo.findById(id).orElseThrow(); }
+    @Transactional public ProductionOrderDetail createPODetail(ProductionOrderDetail d) { return podRepo.save(d); }
+    @Transactional public ProductionOrderDetail updatePODetail(Long id, ProductionOrderDetail upd) {
+        ProductionOrderDetail e = podRepo.findById(id).orElseThrow();
+        e.setProductionOrder(upd.getProductionOrder()); e.setProduct(upd.getProduct()); e.setBom(upd.getBom());
+        e.setBomVersion(upd.getBomVersion()); e.setQuantity(upd.getQuantity()); e.setUnit(upd.getUnit()); e.setNoteColor(upd.getNoteColor());
+        return e;
+    }
+    public void deletePODetail(Long id) { podRepo.deleteById(id); }
+
+    // Technical Sheet
+    public TechnicalSheet findTechSheet(Long id) { return techRepo.findById(id).orElseThrow(); }
+    @Transactional public TechnicalSheet createTechSheet(TechnicalSheet t) { return techRepo.save(t); }
+    @Transactional public TechnicalSheet updateTechSheet(Long id, TechnicalSheet upd) {
+        TechnicalSheet e = techRepo.findById(id).orElseThrow();
+        e.setProductionOrder(upd.getProductionOrder()); e.setSheetNumber(upd.getSheetNumber());
+        e.setYarnSpecifications(upd.getYarnSpecifications()); e.setMachineSettings(upd.getMachineSettings());
+        e.setQualityStandards(upd.getQualityStandards()); e.setSpecialInstructions(upd.getSpecialInstructions());
+        e.setCreatedBy(upd.getCreatedBy()); e.setApprovedBy(upd.getApprovedBy());
+        return e;
+    }
+    public void deleteTechSheet(Long id) { techRepo.deleteById(id); }
+
+    // Work Order
+    public List<WorkOrder> findWOs(Long poId) { return woRepo.findByProductionOrderId(poId); }
+    public WorkOrder findWO(Long id) { return woRepo.findById(id).orElseThrow(); }
+    @Transactional public WorkOrder createWO(WorkOrder w) { return woRepo.save(w); }
+    @Transactional public WorkOrder updateWO(Long id, WorkOrder upd) {
+        WorkOrder e = woRepo.findById(id).orElseThrow();
+        e.setProductionOrder(upd.getProductionOrder()); e.setWoNumber(upd.getWoNumber()); e.setDeadline(upd.getDeadline());
+        e.setStatus(upd.getStatus()); e.setSendStatus(upd.getSendStatus()); e.setProduction(upd.getProduction());
+        e.setCreatedBy(upd.getCreatedBy()); e.setApprovedBy(upd.getApprovedBy());
+        return e;
+    }
+    public void deleteWO(Long id) { woRepo.deleteById(id); }
+
+    // Work Order Detail
+    public List<WorkOrderDetail> findWODetails(Long woId) { return wodRepo.findByWorkOrderId(woId); }
+    public WorkOrderDetail findWODetail(Long id) { return wodRepo.findById(id).orElseThrow(); }
+    @Transactional public WorkOrderDetail createWODetail(WorkOrderDetail d) { return wodRepo.save(d); }
+    @Transactional public WorkOrderDetail updateWODetail(Long id, WorkOrderDetail upd) {
+        WorkOrderDetail e = wodRepo.findById(id).orElseThrow();
+        e.setWorkOrder(upd.getWorkOrder()); e.setProductionOrderDetail(upd.getProductionOrderDetail()); e.setStageSequence(upd.getStageSequence());
+        e.setPlannedStartAt(upd.getPlannedStartAt()); e.setPlannedEndAt(upd.getPlannedEndAt()); e.setStartAt(upd.getStartAt()); e.setCompleteAt(upd.getCompleteAt());
+        e.setWorkStatus(upd.getWorkStatus()); e.setNotes(upd.getNotes());
+        return e;
+    }
+    public void deleteWODetail(Long id) { wodRepo.deleteById(id); }
+
+    // Stage
+    public List<ProductionStage> findStages(Long woDetailId) { return stageRepo.findByWorkOrderDetailIdOrderByStageSequenceAsc(woDetailId); }
+    public ProductionStage findStage(Long id) { return stageRepo.findById(id).orElseThrow(); }
+    @Transactional public ProductionStage createStage(ProductionStage s) { return stageRepo.save(s); }
+    @Transactional public ProductionStage updateStage(Long id, ProductionStage upd) {
+        ProductionStage e = stageRepo.findById(id).orElseThrow();
+        e.setWorkOrderDetail(upd.getWorkOrderDetail()); e.setStageType(upd.getStageType()); e.setStageSequence(upd.getStageSequence());
+        e.setMachine(upd.getMachine()); e.setAssignedTo(upd.getAssignedTo()); e.setAssignedLeader(upd.getAssignedLeader());
+        e.setBatchNumber(upd.getBatchNumber()); e.setPlannedOutput(upd.getPlannedOutput()); e.setActualOutput(upd.getActualOutput());
+        e.setStartAt(upd.getStartAt()); e.setCompleteAt(upd.getCompleteAt()); e.setStatus(upd.getStatus());
+        e.setOutsourced(upd.getOutsourced()); e.setOutsourceVendor(upd.getOutsourceVendor()); e.setNotes(upd.getNotes());
+        return e;
+    }
+    public void deleteStage(Long id) { stageRepo.deleteById(id); }
+}
+
+
