@@ -29,6 +29,9 @@ public class MaterialStock {
     @Column(length = 20)
     private String unit = "KG";
 
+    @Column(name = "unit_price", precision = 12, scale = 2)
+    private BigDecimal unitPrice; // Giá nhập của batch này
+
     @Column(length = 100)
     private String location;
 

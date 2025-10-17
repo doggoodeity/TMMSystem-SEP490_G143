@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tmmsystem.entity.*;
 import tmmsystem.repository.RfqDetailRepository;
 import tmmsystem.repository.RfqRepository;
+import tmmsystem.dto.sales.RfqDetailDto;
 
 import java.util.List;
 
@@ -12,10 +13,12 @@ import java.util.List;
 public class RfqService {
     private final RfqRepository rfqRepository;
     private final RfqDetailRepository detailRepository;
+    private final NotificationService notificationService;
 
-    public RfqService(RfqRepository rfqRepository, RfqDetailRepository detailRepository) {
+    public RfqService(RfqRepository rfqRepository, RfqDetailRepository detailRepository, NotificationService notificationService) {
         this.rfqRepository = rfqRepository;
         this.detailRepository = detailRepository;
+        this.notificationService = notificationService;
     }
 
     public List<Rfq> findAll() { return rfqRepository.findAll(); }
@@ -39,6 +42,137 @@ public class RfqService {
     }
 
     public void delete(Long id) { rfqRepository.deleteById(id); }
+
+    // RFQ Detail Management
+    public List<RfqDetail> findDetailsByRfqId(Long rfqId) { 
+        return detailRepository.findByRfqId(rfqId); 
+    }
+
+    public RfqDetail findDetailById(Long id) { 
+        return detailRepository.findById(id).orElseThrow(); 
+    }
+
+    @Transactional
+    public RfqDetail addDetail(Long rfqId, RfqDetailDto dto) {
+        Rfq rfq = rfqRepository.findById(rfqId).orElseThrow();
+        RfqDetail detail = new RfqDetail();
+        detail.setRfq(rfq);
+        
+        if (dto.getProductId() != null) {
+            Product product = new Product();
+            product.setId(dto.getProductId());
+            detail.setProduct(product);
+        }
+        
+        detail.setQuantity(dto.getQuantity());
+        detail.setUnit(dto.getUnit());
+        detail.setNoteColor(dto.getNoteColor());
+        detail.setNotes(dto.getNotes());
+        
+        return detailRepository.save(detail);
+    }
+
+    @Transactional
+    public RfqDetail updateDetail(Long id, RfqDetailDto dto) {
+        RfqDetail detail = detailRepository.findById(id).orElseThrow();
+        
+        if (dto.getProductId() != null) {
+            Product product = new Product();
+            product.setId(dto.getProductId());
+            detail.setProduct(product);
+        }
+        
+        detail.setQuantity(dto.getQuantity());
+        detail.setUnit(dto.getUnit());
+        detail.setNoteColor(dto.getNoteColor());
+        detail.setNotes(dto.getNotes());
+        
+        return detailRepository.save(detail);
+    }
+
+    public void deleteDetail(Long id) { 
+        detailRepository.deleteById(id); 
+    }
+
+    // RFQ Workflow Methods
+    @Transactional
+    public Rfq sendRfq(Long id) {
+        Rfq rfq = rfqRepository.findById(id).orElseThrow();
+        if (!"DRAFT".equals(rfq.getStatus())) {
+            throw new IllegalStateException("RFQ must be in DRAFT status to send");
+        }
+        rfq.setStatus("SENT");
+        rfq.setSent(true);
+        Rfq savedRfq = rfqRepository.save(rfq);
+        
+        // Gửi thông báo cho Sale Staff
+        notificationService.notifyNewRfq(savedRfq);
+        
+        return savedRfq;
+    }
+
+    @Transactional
+    public Rfq preliminaryCheck(Long id) {
+        Rfq rfq = rfqRepository.findById(id).orElseThrow();
+        if (!"SENT".equals(rfq.getStatus())) {
+            throw new IllegalStateException("RFQ must be in SENT status to preliminary check");
+        }
+        // Kiểm tra sơ bộ: phải có ít nhất một dòng chi tiết và có ngày giao mong muốn
+        List<RfqDetail> details = detailRepository.findByRfqId(rfq.getId());
+        if (details == null || details.isEmpty()) {
+            throw new IllegalStateException("RFQ must contain at least one product line");
+        }
+        if (rfq.getExpectedDeliveryDate() == null) {
+            throw new IllegalStateException("Expected delivery date is required");
+        }
+        rfq.setStatus("PRELIMINARY_CHECKED");
+        return rfqRepository.save(rfq);
+    }
+
+    @Transactional
+    public Rfq forwardToPlanning(Long id) {
+        Rfq rfq = rfqRepository.findById(id).orElseThrow();
+        if (!"PRELIMINARY_CHECKED".equals(rfq.getStatus())) {
+            throw new IllegalStateException("RFQ must be preliminary-checked before forwarding to planning");
+        }
+        rfq.setStatus("FORWARDED_TO_PLANNING");
+        Rfq savedRfq = rfqRepository.save(rfq);
+        
+        // Gửi thông báo cho Planning Staff
+        notificationService.notifyRfqForwardedToPlanning(savedRfq);
+        
+        return savedRfq;
+    }
+
+    @Transactional
+    public Rfq receiveByPlanning(Long id) {
+        Rfq rfq = rfqRepository.findById(id).orElseThrow();
+        if (!"FORWARDED_TO_PLANNING".equals(rfq.getStatus())) {
+            throw new IllegalStateException("RFQ must be forwarded to planning first");
+        }
+        rfq.setStatus("RECEIVED_BY_PLANNING");
+        Rfq savedRfq = rfqRepository.save(rfq);
+        
+        // Gửi thông báo cho Sale Staff
+        notificationService.notifyRfqReceivedByPlanning(savedRfq);
+        
+        return savedRfq;
+    }
+
+    @Transactional
+    public Rfq cancelRfq(Long id) {
+        Rfq rfq = rfqRepository.findById(id).orElseThrow();
+        if ("CANCELED".equals(rfq.getStatus())) {
+            throw new IllegalStateException("RFQ is already canceled");
+        }
+        rfq.setStatus("CANCELED");
+        Rfq savedRfq = rfqRepository.save(rfq);
+        
+        // Gửi thông báo hủy RFQ
+        notificationService.notifyRfqCanceled(savedRfq);
+        
+        return savedRfq;
+    }
 }
 
 

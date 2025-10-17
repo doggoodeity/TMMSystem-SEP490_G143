@@ -2,26 +2,73 @@ package tmmsystem.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tmmsystem.entity.Quotation;
-import tmmsystem.repository.QuotationRepository;
+import tmmsystem.entity.*;
+import tmmsystem.repository.*;
+import tmmsystem.dto.sales.QuotationDto;
+import tmmsystem.dto.sales.QuotationDetailDto;
+import tmmsystem.dto.sales.RfqDetailDto;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class QuotationService {
-    private final QuotationRepository repository;
+    private final QuotationRepository quotationRepository;
+    private final QuotationDetailRepository quotationDetailRepository;
+    private final RfqRepository rfqRepository;
+    private final RfqDetailRepository rfqDetailRepository;
+    private final ProductRepository productRepository;
+    private final MaterialRepository materialRepository;
+    private final MaterialStockRepository materialStockRepository;
+    private final ContractRepository contractRepository;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
-    public QuotationService(QuotationRepository repository) { this.repository = repository; }
+    // Chi phí công cố định
+    private static final BigDecimal PROCESS_COST_PER_KG = new BigDecimal("45000"); // 20k + 15k + 10k
+    private static final BigDecimal PROFIT_MARGIN = new BigDecimal("1.10"); // 10% lợi nhuận
 
-    public List<Quotation> findAll() { return repository.findAll(); }
-    public Quotation findById(Long id) { return repository.findById(id).orElseThrow(); }
+    public QuotationService(QuotationRepository quotationRepository, 
+                           QuotationDetailRepository quotationDetailRepository,
+                           RfqRepository rfqRepository,
+                           RfqDetailRepository rfqDetailRepository,
+                           ProductRepository productRepository,
+                           MaterialRepository materialRepository,
+                           MaterialStockRepository materialStockRepository,
+                           ContractRepository contractRepository,
+                           NotificationService notificationService,
+                           EmailService emailService) {
+        this.quotationRepository = quotationRepository;
+        this.quotationDetailRepository = quotationDetailRepository;
+        this.rfqRepository = rfqRepository;
+        this.rfqDetailRepository = rfqDetailRepository;
+        this.productRepository = productRepository;
+        this.materialRepository = materialRepository;
+        this.materialStockRepository = materialStockRepository;
+        this.contractRepository = contractRepository;
+        this.notificationService = notificationService;
+        this.emailService = emailService;
+    }
+
+    public List<Quotation> findAll() { 
+        return quotationRepository.findAll(); 
+    }
+
+    public Quotation findById(Long id) { 
+        return quotationRepository.findById(id).orElseThrow(); 
+    }
 
     @Transactional
-    public Quotation create(Quotation q) { return repository.save(q); }
+    public Quotation create(Quotation quotation) { 
+        return quotationRepository.save(quotation); 
+    }
 
     @Transactional
     public Quotation update(Long id, Quotation updated) {
-        Quotation existing = repository.findById(id).orElseThrow();
+        Quotation existing = quotationRepository.findById(id).orElseThrow();
         existing.setQuotationNumber(updated.getQuotationNumber());
         existing.setRfq(updated.getRfq());
         existing.setCustomer(updated.getCustomer());
@@ -38,7 +85,262 @@ public class QuotationService {
         return existing;
     }
 
-    public void delete(Long id) { repository.deleteById(id); }
+    public void delete(Long id) { 
+        quotationRepository.deleteById(id); 
+    }
+
+    // Planning Department: Tạo báo giá từ RFQ
+    @Transactional
+    public Quotation createQuotationFromRfq(Long rfqId, Long planningUserId, BigDecimal profitMargin, String capacityCheckNotes) {
+        Rfq rfq = rfqRepository.findById(rfqId).orElseThrow();
+        
+        // Kiểm tra trạng thái RFQ
+        if (!"RECEIVED_BY_PLANNING".equals(rfq.getStatus())) {
+            throw new IllegalStateException("RFQ must be received by planning to create quotation");
+        }
+
+        // Tạo Quotation
+        Quotation quotation = new Quotation();
+        quotation.setQuotationNumber(generateQuotationNumber());
+        quotation.setRfq(rfq);
+        quotation.setCustomer(rfq.getCustomer());
+        quotation.setValidUntil(LocalDate.now().plusDays(30)); // 30 ngày hiệu lực
+        quotation.setStatus("DRAFT");
+        quotation.setCapacityCheckedBy(new User());
+        quotation.getCapacityCheckedBy().setId(planningUserId);
+        quotation.setCapacityCheckedAt(java.time.Instant.now());
+        quotation.setCapacityCheckNotes(capacityCheckNotes != null ? capacityCheckNotes : "Khả năng sản xuất đã được kiểm tra - Kho đủ nguyên liệu, máy móc sẵn sàng");
+        quotation.setCreatedBy(new User());
+        quotation.getCreatedBy().setId(planningUserId);
+
+        // Lấy chi tiết RFQ và tính giá
+        List<RfqDetail> rfqDetails = rfqDetailRepository.findByRfqId(rfqId);
+        BigDecimal totalAmount = BigDecimal.ZERO;
+
+        for (RfqDetail rfqDetail : rfqDetails) {
+            Product product = productRepository.findById(rfqDetail.getProduct().getId()).orElseThrow();
+            
+            // Tính giá theo công thức với profit margin có thể thay đổi
+            QuotationDetail quotationDetail = calculateQuotationDetail(product, rfqDetail.getQuantity(), profitMargin);
+            quotationDetail.setQuotation(quotation);
+            quotation.getDetails().add(quotationDetail);
+            
+            totalAmount = totalAmount.add(quotationDetail.getTotalPrice());
+        }
+
+        quotation.setTotalAmount(totalAmount);
+        Quotation savedQuotation = quotationRepository.save(quotation);
+
+        // Lưu chi tiết báo giá
+        for (QuotationDetail detail : quotation.getDetails()) {
+            quotationDetailRepository.save(detail);
+        }
+
+        // Cập nhật trạng thái RFQ
+        rfq.setStatus("QUOTED");
+        rfqRepository.save(rfq);
+
+        // Gửi thông báo cho Sale Staff
+        notificationService.notifyQuotationCreated(savedQuotation);
+
+        return savedQuotation;
+    }
+
+    private QuotationDetail calculateQuotationDetail(Product product, BigDecimal quantity, BigDecimal profitMargin) {
+        QuotationDetail detail = new QuotationDetail();
+        detail.setProduct(product);
+        detail.setQuantity(quantity);
+        detail.setUnit("CÁI");
+
+        // Xác định thành phần sợi từ tên sản phẩm và tính giá trung bình
+        String productName = product.getName().toLowerCase();
+        BigDecimal materialPricePerKg;
+        
+        if (productName.contains("cotton") && productName.contains("bambo")) {
+            // 50-50 cotton + bamboo
+            BigDecimal cottonAvgPrice = getAverageMaterialPrice("Ne 32/1CD");
+            BigDecimal bambooAvgPrice = getAverageMaterialPrice("Ne 30/1");
+            materialPricePerKg = cottonAvgPrice.add(bambooAvgPrice).divide(new BigDecimal("2"));
+        } else if (productName.contains("bambo")) {
+            // 100% bamboo
+            materialPricePerKg = getAverageMaterialPrice("Ne 30/1");
+        } else {
+            // 100% cotton (mặc định)
+            materialPricePerKg = getAverageMaterialPrice("Ne 32/1CD");
+        }
+
+        // Tính giá theo công thức
+        BigDecimal unitWeightKg = product.getStandardWeight().divide(new BigDecimal("1000")); // gram to kg
+        BigDecimal materialCostPerUnit = unitWeightKg.multiply(materialPricePerKg);
+        BigDecimal processCostPerUnit = unitWeightKg.multiply(PROCESS_COST_PER_KG);
+        BigDecimal basePricePerUnit = materialCostPerUnit.add(processCostPerUnit);
+        BigDecimal unitPrice = basePricePerUnit.multiply(profitMargin); // Lợi nhuận có thể thay đổi
+
+        detail.setUnitPrice(unitPrice);
+        detail.setTotalPrice(unitPrice.multiply(quantity));
+        detail.setNoteColor(null); // Không có noteColor từ RfqDetail
+
+        return detail;
+    }
+
+    private String generateQuotationNumber() {
+        String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        long count = quotationRepository.count() + 1;
+        return String.format("QUO-%s-%03d", dateStr, count);
+    }
+
+    /**
+     * Tính giá trung bình của nguyên liệu dựa trên các batch nhập khác nhau
+     * Công thức: (quantity1 * price1 + quantity2 * price2 + ...) / (quantity1 + quantity2 + ...)
+     */
+    private BigDecimal getAverageMaterialPrice(String materialCode) {
+        // Tìm material theo code
+        Material material = materialRepository.findAll().stream()
+                .filter(m -> materialCode.equals(m.getCode()))
+                .findFirst()
+                .orElse(null);
+        
+        if (material == null) {
+            // Fallback về giá chuẩn nếu không tìm thấy
+            return "Ne 32/1CD".equals(materialCode) ? new BigDecimal("68000") : new BigDecimal("78155");
+        }
+
+        // Lấy tất cả stock của material này
+        List<MaterialStock> stocks = materialStockRepository.findByMaterialId(material.getId());
+        
+        if (stocks.isEmpty()) {
+            // Fallback về giá chuẩn nếu không có stock
+            return "Ne 32/1CD".equals(materialCode) ? new BigDecimal("68000") : new BigDecimal("78155");
+        }
+
+        // Tính giá trung bình có trọng số
+        BigDecimal totalValue = BigDecimal.ZERO;
+        BigDecimal totalQuantity = BigDecimal.ZERO;
+        
+        for (MaterialStock stock : stocks) {
+            if (stock.getUnitPrice() != null && stock.getQuantity() != null) {
+                BigDecimal batchValue = stock.getQuantity().multiply(stock.getUnitPrice());
+                totalValue = totalValue.add(batchValue);
+                totalQuantity = totalQuantity.add(stock.getQuantity());
+            }
+        }
+        
+        if (totalQuantity.compareTo(BigDecimal.ZERO) > 0) {
+            return totalValue.divide(totalQuantity, 2, BigDecimal.ROUND_HALF_UP);
+        } else {
+            // Fallback về giá chuẩn
+            return "Ne 32/1CD".equals(materialCode) ? new BigDecimal("68000") : new BigDecimal("78155");
+        }
+    }
+
+    // Sale Staff: Lấy báo giá chờ gửi
+    public List<Quotation> findPendingQuotations() {
+        return quotationRepository.findAll().stream()
+                .filter(q -> "DRAFT".equals(q.getStatus()))
+                .collect(Collectors.toList());
+    }
+
+    // Sale Staff: Gửi báo giá cho Customer
+    @Transactional
+    public Quotation sendQuotationToCustomer(Long quotationId) {
+        Quotation quotation = quotationRepository.findById(quotationId).orElseThrow();
+        if (!"DRAFT".equals(quotation.getStatus())) {
+            throw new IllegalStateException("Quotation must be in DRAFT status to send");
+        }
+        
+        quotation.setStatus("SENT");
+        Quotation savedQuotation = quotationRepository.save(quotation);
+
+        // Gửi thông báo cho Customer
+        notificationService.notifyQuotationSentToCustomer(savedQuotation);
+        
+        // Gửi email cho Customer
+        emailService.sendQuotationEmail(savedQuotation);
+
+        return savedQuotation;
+    }
+
+    // Customer: Lấy báo giá của mình
+    public List<Quotation> findQuotationsByCustomer(Long customerId) {
+        return quotationRepository.findAll().stream()
+                .filter(q -> q.getCustomer().getId().equals(customerId))
+                .collect(Collectors.toList());
+    }
+
+    // Customer: Duyệt báo giá
+    @Transactional
+    public Quotation approveQuotation(Long quotationId) {
+        Quotation quotation = quotationRepository.findById(quotationId).orElseThrow();
+        if (!"SENT".equals(quotation.getStatus())) {
+            throw new IllegalStateException("Quotation must be SENT to approve");
+        }
+        
+        quotation.setStatus("ACCEPTED");
+        quotation.setAccepted(true);
+        Quotation savedQuotation = quotationRepository.save(quotation);
+
+        // Gửi thông báo cho Sale Staff
+        notificationService.notifyQuotationApproved(savedQuotation);
+
+        return savedQuotation;
+    }
+
+    // Customer: Từ chối báo giá
+    @Transactional
+    public Quotation rejectQuotation(Long quotationId) {
+        Quotation quotation = quotationRepository.findById(quotationId).orElseThrow();
+        if (!"SENT".equals(quotation.getStatus())) {
+            throw new IllegalStateException("Quotation must be SENT to reject");
+        }
+        
+        quotation.setStatus("REJECTED");
+        Quotation savedQuotation = quotationRepository.save(quotation);
+
+        // Gửi thông báo cho Sale Staff
+        notificationService.notifyQuotationRejected(savedQuotation);
+
+        return savedQuotation;
+    }
+
+    // Tạo đơn hàng từ báo giá
+    @Transactional
+    public Object createOrderFromQuotation(Long quotationId) {
+        Quotation quotation = quotationRepository.findById(quotationId).orElseThrow();
+        
+        if (!"ACCEPTED".equals(quotation.getStatus())) {
+            throw new IllegalStateException("Quotation must be ACCEPTED to create order");
+        }
+
+        // Tạo Contract từ Quotation
+        Contract contract = new Contract();
+        contract.setContractNumber(generateContractNumber());
+        contract.setQuotation(quotation);
+        contract.setCustomer(quotation.getCustomer());
+        contract.setContractDate(java.time.LocalDate.now());
+        contract.setDeliveryDate(quotation.getValidUntil()); // Sử dụng ngày hết hạn của báo giá
+        contract.setTotalAmount(quotation.getTotalAmount());
+        contract.setStatus("DRAFT");
+        contract.setCreatedBy(quotation.getCreatedBy());
+
+        // Lưu Contract
+        Contract savedContract = contractRepository.save(contract);
+
+        // Cập nhật trạng thái Quotation
+        quotation.setStatus("ORDER_CREATED");
+        quotationRepository.save(quotation);
+
+        // Gửi thông báo cho Sale Staff
+        notificationService.notifyOrderCreated(savedContract);
+        
+        // Gửi email xác nhận đơn hàng cho Customer
+        emailService.sendOrderConfirmationEmail(savedContract);
+
+        return savedContract;
+    }
+
+    private String generateContractNumber() {
+        String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        long count = contractRepository.count() + 1;
+        return String.format("CON-%s-%03d", dateStr, count);
+    }
 }
-
-

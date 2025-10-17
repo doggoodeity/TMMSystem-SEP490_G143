@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.jdbc.core.JdbcTemplate;
 import tmmsystem.entity.Role;
 import tmmsystem.entity.User;
 import tmmsystem.entity.Customer;
@@ -15,6 +16,10 @@ import tmmsystem.repository.CustomerRepository;
 import tmmsystem.repository.MachineRepository;
 import tmmsystem.repository.ProductRepository;
 import tmmsystem.repository.ProductCategoryRepository;
+import tmmsystem.repository.MaterialRepository;
+import tmmsystem.repository.MaterialStockRepository;
+import tmmsystem.entity.Material;
+import tmmsystem.entity.MaterialStock;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -45,31 +50,79 @@ public class DataInitializer implements CommandLineRunner {
 
     @Autowired
     private ProductCategoryRepository productCategoryRepository;
+
+	@Autowired
+	private MaterialRepository materialRepository;
+
+	@Autowired
+	private MaterialStockRepository materialStockRepository;
+	
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
     
 	@Override
 	public void run(String... args) throws Exception {
+		// Xóa dữ liệu cũ trước khi tạo mới
+		clearAllData();
+		
 		createSampleRoles();
 		createSampleUsers();
 		createSampleCustomer();
 		createSampleMachines();
         createSampleCategoriesAndProducts();
+		createSampleMaterials();
+	}
+	
+	private void clearAllData() {
+		System.out.println("Clearing existing data...");
+		
+		// Xóa theo thứ tự để tránh foreign key constraint
+		materialStockRepository.deleteAll();
+		materialRepository.deleteAll();
+		productRepository.deleteAll();
+		productCategoryRepository.deleteAll();
+		machineRepository.deleteAll();
+		customerRepository.deleteAll();
+		userRepository.deleteAll();
+		roleRepository.deleteAll();
+		
+		// Reset auto-increment ID về 1
+		resetAutoIncrementIds();
+		
+		System.out.println("All data cleared and IDs reset successfully!");
+	}
+	
+	private void resetAutoIncrementIds() {
+		System.out.println("Resetting auto-increment IDs...");
+		
+		// Reset auto-increment cho tất cả bảng (MySQL syntax)
+		jdbcTemplate.execute("ALTER TABLE role AUTO_INCREMENT = 1");
+		jdbcTemplate.execute("ALTER TABLE user AUTO_INCREMENT = 1");
+		jdbcTemplate.execute("ALTER TABLE customer AUTO_INCREMENT = 1");
+		jdbcTemplate.execute("ALTER TABLE machine AUTO_INCREMENT = 1");
+		jdbcTemplate.execute("ALTER TABLE product_category AUTO_INCREMENT = 1");
+		jdbcTemplate.execute("ALTER TABLE product AUTO_INCREMENT = 1");
+		jdbcTemplate.execute("ALTER TABLE material AUTO_INCREMENT = 1");
+		jdbcTemplate.execute("ALTER TABLE material_stock AUTO_INCREMENT = 1");
+		
+		System.out.println("Auto-increment IDs reset to 1!");
 	}
     
 	private void createSampleRoles() {
-		getOrCreateRole("Admin", "Administrator role with full access to all system features");
-		getOrCreateRole("Director", "Director role");
-		getOrCreateRole("Sale staff", "Sales staff role with access to customer and sales features");
-		getOrCreateRole("Planning department", "Planning department role");
-		getOrCreateRole("Production manager", "Production manager role");
-		getOrCreateRole("Quality Assurance department", "Quality Assurance department role");
-		getOrCreateRole("Product Process Leader", "Product Process Leader role");
-		getOrCreateRole("Technical Department", "Technical Department role");
-		System.out.println("Sample roles ensured successfully!");
+		createRole("Admin", "Administrator role with full access to all system features");
+		createRole("Director", "Director role");
+		createRole("Sale staff", "Sales staff role with access to customer and sales features");
+		createRole("Planning department", "Planning department role");
+		createRole("Production manager", "Production manager role");
+		createRole("Quality Assurance department", "Quality Assurance department role");
+		createRole("Product Process Leader", "Product Process Leader role");
+		createRole("Technical Department", "Technical Department role");
+		System.out.println("Sample roles created successfully!");
 	}
     
 	private void createSampleUsers() {
 		// Admin user with specified email
-		createUserIfNotExists(
+		createUser(
 			"hatsunemikudangyeu06102004@gmail.com",
 			"Admin",
 			"Nguyễn Văn Admin",
@@ -77,7 +130,7 @@ public class DataInitializer implements CommandLineRunner {
 		);
 
 		// Sales staff sample user
-		createUserIfNotExists(
+		createUser(
 			"sale@tmms.vn",
 			"Sale staff",
 			"Trần Thị Sales",
@@ -85,7 +138,7 @@ public class DataInitializer implements CommandLineRunner {
 		);
 
 		// Director sample user
-		createUserIfNotExists(
+		createUser(
 			"director@tmms.vn",
 			"Director",
 			"Lê Văn Director",
@@ -93,49 +146,42 @@ public class DataInitializer implements CommandLineRunner {
 		);
 
 		// Planning Department sample user
-		createUserIfNotExists(
+		createUser(
 			"planning@tmms.vn",
 			"Planning department",
 			"Phạm Thị Planning",
 			passwordEncoder.encode("planning123")
 		);
 
-		System.out.println("Sample users ensured successfully!");
+		System.out.println("Sample users created successfully!");
 	}
 
 	private void createSampleCustomer() {
-		final String email = "hungnahe180711@fpt.edu.vn";
-		if (!customerRepository.existsByEmail(email)) {
-			Customer c = new Customer();
-			c.setEmail(email);
-			c.setCompanyName("Công ty TNHH ABC");
-			c.setTaxCode("0123456789");
-			c.setBusinessLicense("BL-2024-001");
-			c.setAddress("123 Đường ABC, Quận 1, TP.HCM");
-			c.setContactPerson("Nguyễn Văn Hùng");
-			c.setPhoneNumber("0901234567");
-			c.setPosition("Giám đốc");
-			c.setPassword(passwordEncoder.encode("customer123"));
-			c.setVerified(true);
-			c.setActive(true);
-			customerRepository.save(c);
-		}
+		Customer c = new Customer();
+		c.setEmail("hungnahe180711@fpt.edu.vn");
+		c.setCompanyName("Công ty TNHH ABC");
+		c.setTaxCode("0123456789");
+		c.setBusinessLicense("BL-2024-001");
+		c.setAddress("123 Đường ABC, Quận 1, TP.HCM");
+		c.setContactPerson("Nguyễn Văn Hùng");
+		c.setPhoneNumber("0901234567");
+		c.setPosition("Giám đốc");
+		c.setPassword(passwordEncoder.encode("customer123"));
+		c.setVerified(true);
+		c.setActive(true);
+		customerRepository.save(c);
+		System.out.println("Sample customer created successfully!");
 	}
 
-	private Role getOrCreateRole(String name, String description) {
-		Optional<Role> existing = roleRepository.findByName(name);
-		if (existing.isPresent()) {
-			return existing.get();
-		}
+	private void createRole(String name, String description) {
 		Role role = new Role();
 		role.setName(name);
 		role.setDescription(description);
-		return roleRepository.save(role);
+		roleRepository.save(role);
 	}
 
-	private void createUserIfNotExists(String email, String roleName, String name, String encodedPassword) {
-		if (userRepository.existsByEmail(email)) return;
-		Role role = getOrCreateRole(roleName, roleName + " role");
+	private void createUser(String email, String roleName, String name, String encodedPassword) {
+		Role role = roleRepository.findByName(roleName).orElseThrow();
 		User u = new User();
 		u.setEmail(email);
 		u.setPassword(encodedPassword);
@@ -152,42 +198,45 @@ public class DataInitializer implements CommandLineRunner {
 	private void createSampleMachines() {
 		// 10 weaving machines
 		for (int i = 1; i <= 10; i++) {
-			createMachineIfNotExists(
+			createMachine(
 				String.format("WEAV-%03d", i),
 				"Máy dệt " + i,
 				"WEAVING",
-				"Khu A-" + (i % 5 + 1)
+				"Khu A-" + (i % 5 + 1),
+				"{\"brand\":\"TMMS\",\"power\":\"5kW\",\"modelYear\":\"2022\",\"capacityPerDay\":50,\"capacityUnit\":\"KG\"}"
 			);
 		}
 		// 2 warping machines (máy mắc)
 		for (int i = 1; i <= 2; i++) {
-			createMachineIfNotExists(
+			createMachine(
 				String.format("WARP-%03d", i),
 				"Máy mắc " + i,
 				"WARPING",
-				"Khu B-" + (i % 2 + 1)
+				"Khu B-" + (i % 2 + 1),
+				"{\"brand\":\"TMMS\",\"power\":\"5kW\",\"modelYear\":\"2022\",\"capacityPerDay\":200,\"capacityUnit\":\"KG\"}"
 			);
 		}
 		// 5 sewing machines (máy may)
 		for (int i = 1; i <= 5; i++) {
-			createMachineIfNotExists(
+			createMachine(
 				String.format("SEW-%03d", i),
 				"Máy may " + i,
 				"SEWING",
-				"Khu C-" + (i % 3 + 1)
+				"Khu C-" + (i % 3 + 1),
+				"{\"brand\":\"TMMS\",\"power\":\"5kW\",\"modelYear\":\"2022\",\"capacityPerHour\":{\"faceTowels\":150,\"bathTowels\":70,\"sportsTowels\":100},\"capacityUnit\":\"PIECES\"}"
 			);
 		}
+		System.out.println("Sample machines created successfully!");
 	}
 
-	private void createMachineIfNotExists(String code, String name, String type, String location) {
-		if (machineRepository.existsByCode(code)) return;
+	private void createMachine(String code, String name, String type, String location, String specifications) {
 		tmmsystem.entity.Machine m = new tmmsystem.entity.Machine();
 		m.setCode(code);
 		m.setName(name);
 		m.setType(type);
 		m.setStatus("AVAILABLE");
 		m.setLocation(location);
-		m.setSpecifications("{\"brand\":\"TMMS\",\"power\":\"5kW\",\"modelYear\":\"2022\"}");
+		m.setSpecifications(specifications);
 		Instant now = Instant.now();
 		m.setLastMaintenanceAt(now.minus(30 + RNG.nextInt(30), ChronoUnit.DAYS));
 		m.setNextMaintenanceAt(now.plus(60 + RNG.nextInt(60), ChronoUnit.DAYS));
@@ -195,44 +244,83 @@ public class DataInitializer implements CommandLineRunner {
 		machineRepository.save(m);
 	}
 
+	private void createSampleMaterials() {
+		createMaterial("Ne 32/1CD", "sợi cotton", bd(68000));
+		createMaterial("Ne 30/1", "sợi bamboo", bd(78155));
+		System.out.println("Sample materials created successfully!");
+	}
+
+	private void createMaterial(String code, String name, BigDecimal priceVndPerKg) {
+		Material m = new Material();
+		m.setCode(code);
+		m.setName(name);
+		m.setType("YARN");
+		m.setUnit("KG");
+		m.setStandardCost(priceVndPerKg);
+		m.setActive(true);
+		Material savedMaterial = materialRepository.save(m);
+		
+		// Tạo nhiều batch với giá khác nhau để tính giá trung bình
+		// Batch 1: Giá cao hơn
+		MaterialStock stock1 = new MaterialStock();
+		stock1.setMaterial(savedMaterial);
+		stock1.setQuantity(new BigDecimal("500000"));
+		stock1.setUnit("KG");
+		stock1.setLocation("MAIN-WH");
+		stock1.setBatchNumber("BATCH-" + code.replaceAll("\\s+", "-") + "-001");
+		stock1.setUnitPrice(priceVndPerKg.multiply(new BigDecimal("1.05"))); // +5% so với giá chuẩn
+		stock1.setReceivedDate(java.time.LocalDate.now().minusDays(10));
+		materialStockRepository.save(stock1);
+
+		// Batch 2: Giá thấp hơn
+		MaterialStock stock2 = new MaterialStock();
+		stock2.setMaterial(savedMaterial);
+		stock2.setQuantity(new BigDecimal("499999"));
+		stock2.setUnit("KG");
+		stock2.setLocation("MAIN-WH");
+		stock2.setBatchNumber("BATCH-" + code.replaceAll("\\s+", "-") + "-002");
+		stock2.setUnitPrice(priceVndPerKg.multiply(new BigDecimal("0.95"))); // -5% so với giá chuẩn
+		stock2.setReceivedDate(java.time.LocalDate.now().minusDays(5));
+		materialStockRepository.save(stock2);
+	}
+
     private void createSampleCategoriesAndProducts() {
-        ProductCategory catMat = getOrCreateCategory("khăn mặt", "Khăn dùng cho mặt");
-        ProductCategory catTam = getOrCreateCategory("khăn tắm", "Khăn tắm các kích thước");
-        ProductCategory catTheThao = getOrCreateCategory("khăn thể thao", "Khăn dùng cho thể thao");
+        ProductCategory catMat = createCategory("khăn mặt", "Khăn dùng cho mặt");
+        ProductCategory catTam = createCategory("khăn tắm", "Khăn tắm các kích thước");
+        ProductCategory catTheThao = createCategory("khăn thể thao", "Khăn dùng cho thể thao");
 
         // Khăn mặt (category: khăn mặt, code prefix MAT)
-        addProductIfNotExists("MAT-001", "Khăn mặt màu cotton cuộn tròn", catMat, "30 x 50 cm", 60, bd(9500));
-        addProductIfNotExists("MAT-002", "Khăn mặt hoa bông mềm", catMat, "30 x 50 cm", 60, bd(13000));
-        addProductIfNotExists("MAT-003", "Khăn mặt hoa cotton", catMat, "30 x 50 cm", 60, bd(12000));
-        addProductIfNotExists("MAT-004", "Khăn mặt hoa cotton + bambo", catMat, "30 x 50 cm", 60, bd(12000));
-        addProductIfNotExists("MAT-005", "Khăn mặt hoa bambo", catMat, "30 x 50 cm", 60, bd(12000));
-        addProductIfNotExists("MAT-006", "Khăn mặt màu bambo", catMat, "30 x 50 cm", 60, bd(12000));
-        addProductIfNotExists("MAT-007", "Khăn mặt màu bông mềm", catMat, "30 x 50 cm", 60, bd(13000));
+        createProduct("MAT-001", "Khăn mặt màu cotton cuộn tròn", catMat, "30 x 50 cm", 60, bd(9500));
+        createProduct("MAT-002", "Khăn mặt hoa bông mềm", catMat, "30 x 50 cm", 60, bd(13000));
+        createProduct("MAT-003", "Khăn mặt hoa cotton", catMat, "30 x 50 cm", 60, bd(12000));
+        createProduct("MAT-004", "Khăn mặt hoa cotton + bambo", catMat, "30 x 50 cm", 60, bd(12000));
+        createProduct("MAT-005", "Khăn mặt hoa bambo", catMat, "30 x 50 cm", 60, bd(12000));
+        createProduct("MAT-006", "Khăn mặt màu bambo", catMat, "30 x 50 cm", 60, bd(12000));
+        createProduct("MAT-007", "Khăn mặt màu bông mềm", catMat, "30 x 50 cm", 60, bd(13000));
 
         // Khăn thể thao (category: khăn thể thao, code prefix SPT)
-        addProductIfNotExists("SPT-001", "Khăn thể thao màu cotton", catTheThao, "36 x 80 cm", 100, bd(17000));
-        addProductIfNotExists("SPT-002", "Khăn thể thao hoa bông mềm", catTheThao, "35 x 78 cm", 100, bd(20000));
-        addProductIfNotExists("SPT-003", "Khăn thể thao hoa bambo", catTheThao, "36 x 80 cm", 100, bd(18000));
-        addProductIfNotExists("SPT-004", "Khăn thể thao hoa cotton + bambo", catTheThao, "35 x 78 cm", 100, bd(18000));
+        createProduct("SPT-001", "Khăn thể thao màu cotton", catTheThao, "36 x 80 cm", 100, bd(17000));
+        createProduct("SPT-002", "Khăn thể thao hoa bông mềm", catTheThao, "35 x 78 cm", 100, bd(20000));
+        createProduct("SPT-003", "Khăn thể thao hoa bambo", catTheThao, "36 x 80 cm", 100, bd(18000));
+        createProduct("SPT-004", "Khăn thể thao hoa cotton + bambo", catTheThao, "35 x 78 cm", 100, bd(18000));
 
         // Khăn tắm (category: khăn tắm, code prefix TAM)
-        addProductIfNotExists("TAM-001", "Khăn tắm màu trơn cotton", catTam, "50 x 100 cm", 220, bd(35000));
-        addProductIfNotExists("TAM-002", "Khăn tắm màu trơn bambo", catTam, "50 x 100 cm", 220, bd(35000));
-        addProductIfNotExists("TAM-003", "Khăn tắm hoa bông mềm", catTam, "50 x 100 cm", 220, bd(42000));
-        addProductIfNotExists("TAM-004", "Khăn tắm màu trơn cottton", catTam, "60 x 120 cm", 320, bd(50000));
-        addProductIfNotExists("TAM-005", "Khăn tắm màu trơn bambo", catTam, "60 x 120 cm", 320, bd(50000));
-        addProductIfNotExists("TAM-006", "Khăn tắm màu trơn cotton", catTam, "70 x 140 cm", 420, bd(65000));
-        addProductIfNotExists("TAM-007", "Khăn tắm màu trơn bambo", catTam, "70 x 140 cm", 420, bd(68000));
-        addProductIfNotExists("TAM-008", "Khăn tắm hoa bông mềm", catTam, "70 x 140 cm", 420, bd(80000));
-        addProductIfNotExists("TAM-009", "Khăn tắm màu bông mềm", catTam, "70 x 140 cm", 420, bd(75000));
-        addProductIfNotExists("TAM-010", "Khăn tắm hoa cotton", catTam, "70 x 140 cm", 420, bd(72000));
-        addProductIfNotExists("TAM-011", "Khăn tắm hoa cotton + bambo", catTam, "70 x 140 cm", 420, bd(72000));
+        createProduct("TAM-001", "Khăn tắm màu trơn cotton", catTam, "50 x 100 cm", 220, bd(35000));
+        createProduct("TAM-002", "Khăn tắm màu trơn bambo", catTam, "50 x 100 cm", 220, bd(35000));
+        createProduct("TAM-003", "Khăn tắm hoa bông mềm", catTam, "50 x 100 cm", 220, bd(42000));
+        createProduct("TAM-004", "Khăn tắm màu trơn cottton", catTam, "60 x 120 cm", 320, bd(50000));
+        createProduct("TAM-005", "Khăn tắm màu trơn bambo", catTam, "60 x 120 cm", 320, bd(50000));
+        createProduct("TAM-006", "Khăn tắm màu trơn cotton", catTam, "70 x 140 cm", 420, bd(65000));
+        createProduct("TAM-007", "Khăn tắm màu trơn bambo", catTam, "70 x 140 cm", 420, bd(68000));
+        createProduct("TAM-008", "Khăn tắm hoa bông mềm", catTam, "70 x 140 cm", 420, bd(80000));
+        createProduct("TAM-009", "Khăn tắm màu bông mềm", catTam, "70 x 140 cm", 420, bd(75000));
+        createProduct("TAM-010", "Khăn tắm hoa cotton", catTam, "70 x 140 cm", 420, bd(72000));
+        createProduct("TAM-011", "Khăn tắm hoa cotton + bambo", catTam, "70 x 140 cm", 420, bd(72000));
+        
+        System.out.println("Sample categories and products created successfully!");
     }
 
-    private ProductCategory getOrCreateCategory(String name, String description) {
-        Optional<ProductCategory> existing = productCategoryRepository.findAll()
-            .stream().filter(c -> name.equalsIgnoreCase(c.getName())).findFirst();
-        if (existing.isPresent()) return existing.get();
+    private ProductCategory createCategory(String name, String description) {
         ProductCategory c = new ProductCategory();
         c.setName(name);
         c.setDescription(description);
@@ -240,8 +328,7 @@ public class DataInitializer implements CommandLineRunner {
         return productCategoryRepository.save(c);
     }
 
-    private void addProductIfNotExists(String code, String name, ProductCategory category, String dimensions, int weightGrams, BigDecimal price) {
-        if (productRepository.existsByCode(code)) return;
+    private void createProduct(String code, String name, ProductCategory category, String dimensions, int weightGrams, BigDecimal price) {
         Product p = new Product();
         p.setCode(code);
         p.setName(name);
