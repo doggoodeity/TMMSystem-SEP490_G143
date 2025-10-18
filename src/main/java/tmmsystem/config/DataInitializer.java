@@ -28,7 +28,7 @@ import java.util.Random;
 import java.math.BigDecimal;
 
 
-@Component
+// @Component
 public class DataInitializer implements CommandLineRunner {
     @Autowired
     private PasswordEncoder passwordEncoder;
