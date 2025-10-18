@@ -25,7 +25,38 @@ public class RfqService {
     public Rfq findById(Long id) { return rfqRepository.findById(id).orElseThrow(); }
 
     @Transactional
-    public Rfq create(Rfq rfq) { return rfqRepository.save(rfq); }
+    public Rfq create(Rfq rfq) { 
+        return rfqRepository.save(rfq); 
+    }
+
+    @Transactional
+    public Rfq createWithDetails(Rfq rfq, List<RfqDetailDto> details) {
+        // Lưu RFQ trước
+        Rfq savedRfq = rfqRepository.save(rfq);
+        
+        // Nếu có details, thêm vào RFQ
+        if (details != null && !details.isEmpty()) {
+            for (RfqDetailDto detailDto : details) {
+                RfqDetail detail = new RfqDetail();
+                detail.setRfq(savedRfq);
+                
+                if (detailDto.getProductId() != null) {
+                    Product product = new Product();
+                    product.setId(detailDto.getProductId());
+                    detail.setProduct(product);
+                }
+                
+                detail.setQuantity(detailDto.getQuantity());
+                detail.setUnit(detailDto.getUnit());
+                detail.setNoteColor(detailDto.getNoteColor());
+                detail.setNotes(detailDto.getNotes());
+                
+                detailRepository.save(detail);
+            }
+        }
+        
+        return savedRfq;
+    }
 
     @Transactional
     public Rfq update(Long id, Rfq updated) {

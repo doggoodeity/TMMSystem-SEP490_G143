@@ -53,7 +53,7 @@ public class RfqController {
     public RfqDto get(@Parameter(description = "ID RFQ") @PathVariable Long id) { return mapper.toDto(service.findById(id)); }
 
     @Operation(summary = "Tạo RFQ",
-            description = "Customer/Sale tạo yêu cầu báo giá ở trạng thái DRAFT. Có thể thêm nhiều sản phẩm qua API chi tiết.")
+            description = "Customer/Sale tạo yêu cầu báo giá ở trạng thái DRAFT. Có thể bao gồm danh sách sản phẩm trong cùng request.")
     @PostMapping
     public RfqDto create(
             @RequestBody(description = "Payload tạo RFQ", required = true,
@@ -66,7 +66,9 @@ public class RfqController {
         rfq.setStatus(body.getStatus());
         rfq.setSent(body.getIsSent());
         rfq.setNotes(body.getNotes());
-        return mapper.toDto(service.create(rfq));
+        
+        // Sử dụng method mới để tạo RFQ kèm details
+        return mapper.toDto(service.createWithDetails(rfq, body.getDetails()));
     }
 
     @Operation(summary = "Cập nhật RFQ",
