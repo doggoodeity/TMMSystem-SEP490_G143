@@ -5,6 +5,8 @@ import org.springframework.transaction.annotation.Transactional;
 import tmmsystem.entity.*;
 import tmmsystem.repository.*;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -15,15 +17,24 @@ public class ProductionService {
     private final WorkOrderRepository woRepo;
     private final WorkOrderDetailRepository wodRepo;
     private final ProductionStageRepository stageRepo;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
+    private final ContractRepository contractRepository;
 
     public ProductionService(ProductionOrderRepository poRepo,
                              ProductionOrderDetailRepository podRepo,
                              TechnicalSheetRepository techRepo,
                              WorkOrderRepository woRepo,
                              WorkOrderDetailRepository wodRepo,
-                             ProductionStageRepository stageRepo) {
+                             ProductionStageRepository stageRepo,
+                             UserRepository userRepository,
+                             NotificationService notificationService,
+                             ContractRepository contractRepository) {
         this.poRepo = poRepo; this.podRepo = podRepo; this.techRepo = techRepo;
         this.woRepo = woRepo; this.wodRepo = wodRepo; this.stageRepo = stageRepo;
+        this.userRepository = userRepository;
+        this.notificationService = notificationService;
+        this.contractRepository = contractRepository;
     }
 
     // Production Order
@@ -105,6 +116,85 @@ public class ProductionService {
         return e;
     }
     public void deleteStage(Long id) { stageRepo.deleteById(id); }
+
+    // ===== GIAI ĐOẠN 4: PRODUCTION ORDER CREATION & APPROVAL =====
+    
+    @Transactional
+    public ProductionOrder createFromContract(Long contractId, Long planningUserId, 
+                                           LocalDate plannedStartDate, LocalDate plannedEndDate, String notes) {
+        // Get contract details
+        Contract contract = contractRepository.findById(contractId)
+            .orElseThrow(() -> new RuntimeException("Contract not found"));
+        
+        User planningUser = userRepository.findById(planningUserId)
+            .orElseThrow(() -> new RuntimeException("Planning user not found"));
+        
+        // Create production order
+        ProductionOrder po = new ProductionOrder();
+        po.setPoNumber("PO-" + System.currentTimeMillis());
+        po.setContract(contract);
+        po.setPlannedStartDate(plannedStartDate);
+        po.setPlannedEndDate(plannedEndDate);
+        po.setStatus("PENDING_APPROVAL");
+        po.setNotes(notes);
+        po.setCreatedBy(planningUser);
+        
+        ProductionOrder savedPO = poRepo.save(po);
+        
+        // Send notification to Director
+        notificationService.notifyProductionOrderCreated(savedPO);
+        
+        return savedPO;
+    }
+    
+    @Transactional
+    public ProductionOrder approveProductionOrder(Long poId, Long directorId, String notes) {
+        ProductionOrder po = poRepo.findById(poId)
+            .orElseThrow(() -> new RuntimeException("Production Order not found"));
+        
+        User director = userRepository.findById(directorId)
+            .orElseThrow(() -> new RuntimeException("Director not found"));
+        
+        po.setStatus("APPROVED");
+        po.setApprovedBy(director);
+        po.setApprovedAt(Instant.now());
+        
+        ProductionOrder savedPO = poRepo.save(po);
+        
+        // Send notification to Production Team
+        notificationService.notifyProductionOrderApproved(savedPO);
+        
+        return savedPO;
+    }
+    
+    @Transactional
+    public ProductionOrder rejectProductionOrder(Long poId, Long directorId, String rejectionNotes) {
+        ProductionOrder po = poRepo.findById(poId)
+            .orElseThrow(() -> new RuntimeException("Production Order not found"));
+        
+        User director = userRepository.findById(directorId)
+            .orElseThrow(() -> new RuntimeException("Director not found"));
+        
+        po.setStatus("REJECTED");
+        po.setApprovedBy(director);
+        po.setApprovedAt(Instant.now());
+        po.setNotes(rejectionNotes);
+        
+        ProductionOrder savedPO = poRepo.save(po);
+        
+        // Send notification to Planning Department
+        notificationService.notifyProductionOrderRejected(savedPO);
+        
+        return savedPO;
+    }
+    
+    public List<ProductionOrder> getProductionOrdersPendingApproval() {
+        return poRepo.findByStatus("PENDING_APPROVAL");
+    }
+    
+    public List<ProductionOrder> getDirectorPendingProductionOrders() {
+        return poRepo.findByStatus("PENDING_APPROVAL");
+    }
 }
 
 

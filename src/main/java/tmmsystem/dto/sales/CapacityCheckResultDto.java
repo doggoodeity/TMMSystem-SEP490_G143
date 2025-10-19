@@ -24,6 +24,14 @@ public class CapacityCheckResultDto {
         private LocalDate productionEndDate;
         private List<DailyCapacityDto> dailyCapacities;
         private List<ConflictDto> conflicts;
+        
+        // Thông tin chi tiết các công đoạn tuần tự
+        private SequentialStageDto warpingStage;
+        private SequentialStageDto weavingStage;
+        private SequentialStageDto dyeingStage;
+        private SequentialStageDto cuttingStage;
+        private SequentialStageDto sewingStage;
+        private BigDecimal totalWaitTime;
     }
     
     @Getter
@@ -54,5 +62,18 @@ public class CapacityCheckResultDto {
         private BigDecimal available;
         private BigDecimal used;
         private String conflictMessage;
+    }
+    
+    @Getter
+    @Setter
+    public static class SequentialStageDto {
+        private String stageName;
+        private String stageType;
+        private BigDecimal processingDays;
+        private BigDecimal waitTime;
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private BigDecimal capacity;
+        private String description;
     }
 }

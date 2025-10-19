@@ -224,6 +224,77 @@ public class ProductionController {
     }
     @DeleteMapping("/stages/{id}")
     public void deleteStage(@PathVariable Long id) { service.deleteStage(id); }
+
+    // ===== GIAI ĐOẠN 4: PRODUCTION ORDER CREATION & APPROVAL =====
+    
+    @Operation(summary = "Tạo lệnh sản xuất từ hợp đồng",
+            description = "Planning Department tạo lệnh sản xuất từ hợp đồng đã duyệt")
+    @PostMapping("/orders/create-from-contract")
+    public ProductionOrderDto createFromContract(
+            @RequestParam Long contractId,
+            @RequestParam Long planningUserId,
+            @RequestParam String plannedStartDate,
+            @RequestParam String plannedEndDate,
+            @RequestParam(required = false) String notes) {
+        return mapper.toDto(service.createFromContract(
+            contractId, 
+            planningUserId, 
+            java.time.LocalDate.parse(plannedStartDate), 
+            java.time.LocalDate.parse(plannedEndDate), 
+            notes));
+    }
+    
+    @Operation(summary = "Lấy lệnh sản xuất chờ duyệt",
+            description = "Lấy danh sách lệnh sản xuất đang chờ duyệt")
+    @GetMapping("/orders/pending-approval")
+    public List<ProductionOrderDto> getProductionOrdersPendingApproval() {
+        return service.getProductionOrdersPendingApproval().stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+    
+    @Operation(summary = "Gửi lệnh sản xuất để duyệt",
+            description = "Planning Department gửi lệnh sản xuất để Director duyệt")
+    @PostMapping("/orders/{id}/submit-approval")
+    public ProductionOrderDto submitForApproval(@PathVariable Long id) {
+        // Update status to PENDING_APPROVAL if not already
+        ProductionOrder po = service.findPO(id);
+        if (!"PENDING_APPROVAL".equals(po.getStatus())) {
+            po.setStatus("PENDING_APPROVAL");
+            service.updatePO(id, po);
+        }
+        return mapper.toDto(po);
+    }
+    
+    // Director APIs
+    @Operation(summary = "Lấy lệnh sản xuất chờ duyệt (Director)",
+            description = "Director lấy danh sách lệnh sản xuất chờ duyệt")
+    @GetMapping("/orders/director/pending")
+    public List<ProductionOrderDto> getDirectorPendingProductionOrders() {
+        return service.getDirectorPendingProductionOrders().stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+    
+    @Operation(summary = "Duyệt lệnh sản xuất",
+            description = "Director duyệt lệnh sản xuất")
+    @PostMapping("/orders/{id}/approve")
+    public ProductionOrderDto approveProductionOrder(
+            @PathVariable Long id,
+            @RequestParam Long directorId,
+            @RequestParam(required = false) String notes) {
+        return mapper.toDto(service.approveProductionOrder(id, directorId, notes));
+    }
+    
+    @Operation(summary = "Từ chối lệnh sản xuất",
+            description = "Director từ chối lệnh sản xuất")
+    @PostMapping("/orders/{id}/reject")
+    public ProductionOrderDto rejectProductionOrder(
+            @PathVariable Long id,
+            @RequestParam Long directorId,
+            @RequestParam String rejectionNotes) {
+        return mapper.toDto(service.rejectProductionOrder(id, directorId, rejectionNotes));
+    }
 }
 
 

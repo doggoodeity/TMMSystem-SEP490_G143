@@ -1,10 +1,15 @@
 package tmmsystem.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import tmmsystem.dto.sales.ContractDto;
 import tmmsystem.entity.Customer;
 import tmmsystem.entity.Quotation;
@@ -72,6 +77,96 @@ public class ContractController {
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) { service.delete(id); }
+
+    // ===== GIAI ĐOẠN 3: CONTRACT UPLOAD & APPROVAL =====
+    
+    @Operation(summary = "Upload hợp đồng đã ký",
+            description = "Sale Staff upload bản hợp đồng đã ký lên hệ thống")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Upload thành công"),
+            @ApiResponse(responseCode = "400", description = "File không hợp lệ"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy hợp đồng")
+    })
+    @PostMapping("/{id}/upload-signed")
+    public ContractDto uploadSignedContract(
+            @Parameter(description = "ID hợp đồng") @PathVariable Long id,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(required = false) String notes,
+            @RequestParam Long saleUserId) {
+        return mapper.toDto(service.uploadSignedContract(id, file, notes, saleUserId));
+    }
+    
+    @Operation(summary = "Lấy hợp đồng chờ duyệt",
+            description = "Lấy danh sách hợp đồng đang chờ duyệt")
+    @GetMapping("/pending-approval")
+    public List<ContractDto> getContractsPendingApproval() {
+        return service.getContractsPendingApproval().stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+    
+    @Operation(summary = "Re-upload hợp đồng",
+            description = "Sale Staff upload lại hợp đồng sau khi bị từ chối")
+    @PostMapping("/{id}/re-upload")
+    public ContractDto reUploadContract(
+            @Parameter(description = "ID hợp đồng") @PathVariable Long id,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(required = false) String notes,
+            @RequestParam Long saleUserId) {
+        return mapper.toDto(service.uploadSignedContract(id, file, notes, saleUserId));
+    }
+    
+    // Director APIs
+    @Operation(summary = "Lấy hợp đồng chờ duyệt (Director)",
+            description = "Director lấy danh sách hợp đồng chờ duyệt")
+    @GetMapping("/director/pending")
+    public List<ContractDto> getDirectorPendingContracts() {
+        return service.getDirectorPendingContracts().stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+    
+    @Operation(summary = "Duyệt hợp đồng",
+            description = "Director duyệt hợp đồng")
+    @PostMapping("/{id}/approve")
+    public ContractDto approveContract(
+            @Parameter(description = "ID hợp đồng") @PathVariable Long id,
+            @RequestParam Long directorId,
+            @RequestParam(required = false) String notes) {
+        return mapper.toDto(service.approveContract(id, directorId, notes));
+    }
+    
+    @Operation(summary = "Từ chối hợp đồng",
+            description = "Director từ chối hợp đồng")
+    @PostMapping("/{id}/reject")
+    public ContractDto rejectContract(
+            @Parameter(description = "ID hợp đồng") @PathVariable Long id,
+            @RequestParam Long directorId,
+            @RequestParam String rejectionNotes) {
+        return mapper.toDto(service.rejectContract(id, directorId, rejectionNotes));
+    }
+    
+    @Operation(summary = "Lấy URL file hợp đồng",
+            description = "Lấy URL để download file hợp đồng")
+    @GetMapping("/{id}/file-url")
+    public String getContractFileUrl(@Parameter(description = "ID hợp đồng") @PathVariable Long id) {
+        return service.getContractFileUrl(id);
+    }
+    
+    @Operation(summary = "Download file hợp đồng",
+            description = "Download file hợp đồng trực tiếp")
+    @GetMapping("/{id}/download")
+    public ResponseEntity<org.springframework.core.io.InputStreamResource> downloadContractFile(
+            @Parameter(description = "ID hợp đồng") @PathVariable Long id) {
+        try {
+            java.io.InputStream inputStream = service.downloadContractFile(id);
+            return ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=\"contract_" + id + ".pdf\"")
+                    .body(new org.springframework.core.io.InputStreamResource(inputStream));
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }
 
 

@@ -2,17 +2,9 @@ package tmmsystem.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.jdbc.core.JdbcTemplate;
-import tmmsystem.entity.Role;
-import tmmsystem.entity.User;
-import tmmsystem.entity.Customer;
 import tmmsystem.entity.Product;
 import tmmsystem.entity.ProductCategory;
-import tmmsystem.repository.RoleRepository;
-import tmmsystem.repository.UserRepository;
-import tmmsystem.repository.CustomerRepository;
 import tmmsystem.repository.MachineRepository;
 import tmmsystem.repository.ProductRepository;
 import tmmsystem.repository.ProductCategoryRepository;
@@ -23,25 +15,13 @@ import tmmsystem.entity.MaterialStock;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Optional;
 import java.util.Random;
 import java.math.BigDecimal;
 
 
-// @Component
+/*
+@Component
 public class DataInitializer implements CommandLineRunner {
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private RoleRepository roleRepository;
-    
-    @Autowired
-    private UserRepository userRepository;
-
-	@Autowired
-	private CustomerRepository customerRepository;
-
 	@Autowired
 	private MachineRepository machineRepository;
 
@@ -56,147 +36,20 @@ public class DataInitializer implements CommandLineRunner {
 
 	@Autowired
 	private MaterialStockRepository materialStockRepository;
-	
-	@Autowired
-	private JdbcTemplate jdbcTemplate;
     
 	@Override
 	public void run(String... args) throws Exception {
-		// Xóa dữ liệu cũ trước khi tạo mới
-		clearAllData();
-		
-		createSampleRoles();
-		createSampleUsers();
-		createSampleCustomer();
+		// Chỉ tạo dữ liệu cơ bản, không xóa dữ liệu cũ
 		createSampleMachines();
         createSampleCategoriesAndProducts();
 		createSampleMaterials();
 	}
 	
-	private void clearAllData() {
-		System.out.println("Clearing existing data...");
-		
-		// Xóa theo thứ tự để tránh foreign key constraint
-		materialStockRepository.deleteAll();
-		materialRepository.deleteAll();
-		productRepository.deleteAll();
-		productCategoryRepository.deleteAll();
-		machineRepository.deleteAll();
-		customerRepository.deleteAll();
-		userRepository.deleteAll();
-		roleRepository.deleteAll();
-		
-		// Reset auto-increment ID về 1
-		resetAutoIncrementIds();
-		
-		System.out.println("All data cleared and IDs reset successfully!");
-	}
-	
-	private void resetAutoIncrementIds() {
-		System.out.println("Resetting auto-increment IDs...");
-		
-		// Reset auto-increment cho tất cả bảng (MySQL syntax)
-		jdbcTemplate.execute("ALTER TABLE role AUTO_INCREMENT = 1");
-		jdbcTemplate.execute("ALTER TABLE user AUTO_INCREMENT = 1");
-		jdbcTemplate.execute("ALTER TABLE customer AUTO_INCREMENT = 1");
-		jdbcTemplate.execute("ALTER TABLE machine AUTO_INCREMENT = 1");
-		jdbcTemplate.execute("ALTER TABLE product_category AUTO_INCREMENT = 1");
-		jdbcTemplate.execute("ALTER TABLE product AUTO_INCREMENT = 1");
-		jdbcTemplate.execute("ALTER TABLE material AUTO_INCREMENT = 1");
-		jdbcTemplate.execute("ALTER TABLE material_stock AUTO_INCREMENT = 1");
-		
-		System.out.println("Auto-increment IDs reset to 1!");
-	}
-    
-	private void createSampleRoles() {
-		createRole("Admin", "Administrator role with full access to all system features");
-		createRole("Director", "Director role");
-		createRole("Sale staff", "Sales staff role with access to customer and sales features");
-		createRole("Planning department", "Planning department role");
-		createRole("Production manager", "Production manager role");
-		createRole("Quality Assurance department", "Quality Assurance department role");
-		createRole("Product Process Leader", "Product Process Leader role");
-		createRole("Technical Department", "Technical Department role");
-		System.out.println("Sample roles created successfully!");
-	}
-    
-	private void createSampleUsers() {
-		// Admin user with specified email
-		createUser(
-			"hatsunemikudangyeu06102004@gmail.com",
-			"Admin",
-			"Nguyễn Văn Admin",
-			passwordEncoder.encode("admin123")
-		);
-
-		// Sales staff sample user
-		createUser(
-			"sale@tmms.vn",
-			"Sale staff",
-			"Trần Thị Sales",
-			passwordEncoder.encode("sales123")
-		);
-
-		// Director sample user
-		createUser(
-			"director@tmms.vn",
-			"Director",
-			"Lê Văn Director",
-			passwordEncoder.encode("director123")
-		);
-
-		// Planning Department sample user
-		createUser(
-			"planning@tmms.vn",
-			"Planning department",
-			"Phạm Thị Planning",
-			passwordEncoder.encode("planning123")
-		);
-
-		System.out.println("Sample users created successfully!");
-	}
-
-	private void createSampleCustomer() {
-		Customer c = new Customer();
-		c.setEmail("hungnahe180711@fpt.edu.vn");
-		c.setCompanyName("Công ty TNHH ABC");
-		c.setTaxCode("0123456789");
-		c.setBusinessLicense("BL-2024-001");
-		c.setAddress("123 Đường ABC, Quận 1, TP.HCM");
-		c.setContactPerson("Nguyễn Văn Hùng");
-		c.setPhoneNumber("0901234567");
-		c.setPosition("Giám đốc");
-		c.setPassword(passwordEncoder.encode("customer123"));
-		c.setVerified(true);
-		c.setActive(true);
-		customerRepository.save(c);
-		System.out.println("Sample customer created successfully!");
-	}
-
-	private void createRole(String name, String description) {
-		Role role = new Role();
-		role.setName(name);
-		role.setDescription(description);
-		roleRepository.save(role);
-	}
-
-	private void createUser(String email, String roleName, String name, String encodedPassword) {
-		Role role = roleRepository.findByName(roleName).orElseThrow();
-		User u = new User();
-		u.setEmail(email);
-		u.setPassword(encodedPassword);
-		u.setName(name);
-		u.setPhoneNumber("090" + String.format("%07d", RNG.nextInt(10000000)));
-		u.setActive(true);
-		u.setVerified(true);
-		u.setRole(role);
-		userRepository.save(u);
-	}
 
 	private static final Random RNG = new Random();
 
 	private void createSampleMachines() {
-		// 10 weaving machines
+		// 10 weaving machines (máy dệt)
 		for (int i = 1; i <= 10; i++) {
 			createMachine(
 				String.format("WEAV-%03d", i),
@@ -214,6 +67,16 @@ public class DataInitializer implements CommandLineRunner {
 				"WARPING",
 				"Khu B-" + (i % 2 + 1),
 				"{\"brand\":\"TMMS\",\"power\":\"5kW\",\"modelYear\":\"2022\",\"capacityPerDay\":200,\"capacityUnit\":\"KG\"}"
+			);
+		}
+		// 5 cutting machines (máy cắt)
+		for (int i = 1; i <= 5; i++) {
+			createMachine(
+				String.format("CUT-%03d", i),
+				"Máy cắt " + i,
+				"CUTTING",
+				"Khu C-" + (i % 3 + 1),
+				"{\"brand\":\"TMMS\",\"power\":\"3kW\",\"modelYear\":\"2022\",\"capacityPerHour\":{\"faceTowels\":150,\"bathTowels\":70,\"sportsTowels\":100},\"capacityUnit\":\"PIECES\"}"
 			);
 		}
 		// 5 sewing machines (máy may)
@@ -345,3 +208,4 @@ public class DataInitializer implements CommandLineRunner {
         return new BigDecimal(Long.toString(vnd));
     }
 }
+*/

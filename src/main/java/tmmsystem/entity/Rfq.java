@@ -42,7 +42,7 @@ public class Rfq {
     @Column(name = "expected_delivery_date")
     private LocalDate expectedDeliveryDate;
 
-    @Column(length = 20)
+    @Column(length = 100)
     private String status = "DRAFT"; // DRAFT, SENT, QUOTED, CANCELED
 
     @Column(name = "is_sent")

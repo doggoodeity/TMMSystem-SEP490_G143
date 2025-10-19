@@ -282,6 +282,10 @@ public class QuotationService {
         // Gửi thông báo cho Sale Staff
         notificationService.notifyQuotationApproved(savedQuotation);
 
+        // Tự động tạo đơn hàng từ báo giá đã được duyệt và gửi thông báo "Order created"
+        // (createOrderFromQuotation() sẽ chịu trách nhiệm gửi notification và email xác nhận đơn hàng)
+        createOrderFromQuotation(quotationId);
+
         return savedQuotation;
     }
 
