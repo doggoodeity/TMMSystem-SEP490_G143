@@ -14,28 +14,27 @@ public class MinIOConfig {
     @Value("${minio.private.endpoint}")
     private String privateEndpoint;
 
-    @Value("${minio.root.user}")
-    private String rootUser;
+    @Value("${minio.access-key}")
+    private String accessKey;
 
-    @Value("${minio.root.password}")
-    private String rootPassword;
+    @Value("${minio.secret-key}")
+    private String secretKey;
 
     @Bean
     public MinioClient minioClient() {
-        // ✅ Ưu tiên public endpoint nếu đang chạy local
+        // ✅ Ưu tiên public endpoint nếu chạy local
         String endpoint = isRunningOnRailway() ? privateEndpoint : publicEndpoint;
 
         System.out.println("👉 MinIO Endpoint in use: " + endpoint);
-        System.out.println("👉 MinIO User: " + rootUser);
+        System.out.println("👉 MinIO Access Key: " + accessKey);
 
         return MinioClient.builder()
                 .endpoint(endpoint)
-                .credentials(rootUser, rootPassword)
+                .credentials(accessKey, secretKey)  // ✅ Dùng Access Key mới
                 .build();
     }
 
     private boolean isRunningOnRailway() {
-        // Railway luôn inject biến này cho tất cả container
         return System.getenv("RAILWAY_ENVIRONMENT") != null;
     }
 
