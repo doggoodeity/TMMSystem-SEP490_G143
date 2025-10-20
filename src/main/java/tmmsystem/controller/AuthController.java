@@ -2,6 +2,8 @@
 package tmmsystem.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.validation.annotation.Validated;
 import jakarta.validation.Valid;
@@ -141,10 +143,23 @@ public class AuthController {
 
     @PostMapping("/customer/create-company")
     public ResponseEntity<?> createCompany(@Valid @RequestBody CustomerCreateRequest req, 
-                                         @RequestHeader("Authorization") String authHeader) {
+                                         @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             // Extract user ID from JWT token
-            String token = authHeader.replace("Bearer ", "");
+            String token = null;
+            if (authHeader != null && !authHeader.isBlank()) {
+                token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader.trim();
+            } else {
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                if (auth != null && auth.getName() != null) {
+                    // derive by email from principal when header missing
+                    Customer c = customerService.findByEmailOrThrow(auth.getName());
+                    if (c != null) {
+                        return ResponseEntity.ok("Tạo/cập nhật công ty yêu cầu header Authorization (Bearer token)");
+                    }
+                }
+                return ResponseEntity.badRequest().body("Thiếu header Authorization");
+            }
             Long customerId = customerService.getCustomerIdFromToken(token);
 
             // Cập nhật/ghi đè company info cho customer đã đăng ký
@@ -179,10 +194,34 @@ public class AuthController {
     }
 
     @GetMapping("/customer/profile")
-    public ResponseEntity<?> getCustomerProfile(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getCustomerProfile(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             // Extract user ID from JWT token
-            String token = authHeader.replace("Bearer ", "");
+            String token = null;
+            if (authHeader != null && !authHeader.isBlank()) {
+                token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader.trim();
+            } else {
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                if (auth != null && auth.getName() != null) {
+                    // Lấy id qua email khi không có header
+                    Customer customer = customerService.findByEmailOrThrow(auth.getName());
+                    if (customer != null) {
+                        return ResponseEntity.ok(java.util.Map.of(
+                                "customerId", customer.getId(),
+                                "companyName", customer.getCompanyName(),
+                                "contactPerson", customer.getContactPerson(),
+                                "email", customer.getEmail(),
+                                "phoneNumber", customer.getPhoneNumber(),
+                                "address", customer.getAddress(),
+                                "taxCode", customer.getTaxCode(),
+                                "active", customer.getActive(),
+                                "verified", customer.getVerified(),
+                                "registrationType", customer.getRegistrationType()
+                        ));
+                    }
+                }
+                return ResponseEntity.badRequest().body("Thiếu header Authorization");
+            }
             Long customerId = customerService.getCustomerIdFromToken(token);
 
             Customer customer = customerService.findById(customerId);

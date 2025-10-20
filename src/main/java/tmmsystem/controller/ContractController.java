@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import tmmsystem.dto.sales.ContractDto;
@@ -87,9 +88,11 @@ public class ContractController {
             @ApiResponse(responseCode = "400", description = "File không hợp lệ"),
             @ApiResponse(responseCode = "404", description = "Không tìm thấy hợp đồng")
     })
-    @PostMapping("/{id}/upload-signed")
+    @PostMapping(value = "/{id}/upload-signed", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ContractDto uploadSignedContract(
             @Parameter(description = "ID hợp đồng") @PathVariable Long id,
+            @Parameter(description = "File hợp đồng đã ký", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                    schema = @Schema(type = "string", format = "binary")))
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false) String notes,
             @RequestParam Long saleUserId) {
@@ -107,9 +110,11 @@ public class ContractController {
     
     @Operation(summary = "Re-upload hợp đồng",
             description = "Sale Staff upload lại hợp đồng sau khi bị từ chối")
-    @PostMapping("/{id}/re-upload")
+    @PostMapping(value = "/{id}/re-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ContractDto reUploadContract(
             @Parameter(description = "ID hợp đồng") @PathVariable Long id,
+            @Parameter(description = "File hợp đồng đã ký", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                    schema = @Schema(type = "string", format = "binary")))
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false) String notes,
             @RequestParam Long saleUserId) {
@@ -155,7 +160,7 @@ public class ContractController {
     
     @Operation(summary = "Download file hợp đồng",
             description = "Download file hợp đồng trực tiếp")
-    @GetMapping("/{id}/download")
+    @GetMapping(value = "/{id}/download", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public ResponseEntity<org.springframework.core.io.InputStreamResource> downloadContractFile(
             @Parameter(description = "ID hợp đồng") @PathVariable Long id) {
         try {
