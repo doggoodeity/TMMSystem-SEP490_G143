@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 @Service
 @Slf4j
@@ -155,6 +155,53 @@ public class ContractService {
             log.error("Error downloading contract file for contract ID: {}", contractId, e);
             throw new RuntimeException("Failed to download contract file: " + e.getMessage(), e);
         }
+    }
+    
+    // ===== ORDER DETAILS API =====
+    
+    public tmmsystem.dto.sales.OrderDetailsDto getOrderDetails(Long contractId) {
+        Contract contract = repository.findById(contractId)
+            .orElseThrow(() -> new RuntimeException("Contract not found"));
+        
+        // Build customer info
+        tmmsystem.dto.sales.OrderDetailsDto.CustomerInfo customerInfo = tmmsystem.dto.sales.OrderDetailsDto.CustomerInfo.builder()
+            .customerId(contract.getCustomer().getId())
+            .customerName(contract.getCustomer().getContactPerson())
+            .phoneNumber(contract.getCustomer().getPhoneNumber())
+            .companyName(contract.getCustomer().getCompanyName())
+            .taxCode(contract.getCustomer().getTaxCode())
+            .address(contract.getCustomer().getAddress())
+            .build();
+        
+        // Build order items from quotation details
+        List<tmmsystem.dto.sales.OrderDetailsDto.OrderItemDto> orderItems = new ArrayList<>();
+        if (contract.getQuotation() != null && contract.getQuotation().getDetails() != null) {
+            for (tmmsystem.entity.QuotationDetail detail : contract.getQuotation().getDetails()) {
+                tmmsystem.dto.sales.OrderDetailsDto.OrderItemDto item = tmmsystem.dto.sales.OrderDetailsDto.OrderItemDto.builder()
+                    .productId(detail.getProduct().getId())
+                    .productName(detail.getProduct().getName())
+                    .productSize(detail.getProduct().getStandardDimensions()) // Using standardDimensions field
+                    .quantity(detail.getQuantity())
+                    .unit(detail.getUnit())
+                    .unitPrice(detail.getUnitPrice())
+                    .totalPrice(detail.getTotalPrice())
+                    .noteColor(detail.getNoteColor())
+                    .build();
+                orderItems.add(item);
+            }
+        }
+        
+        return tmmsystem.dto.sales.OrderDetailsDto.builder()
+            .contractId(contract.getId())
+            .contractNumber(contract.getContractNumber())
+            .status(contract.getStatus())
+            .contractDate(contract.getContractDate())
+            .deliveryDate(contract.getDeliveryDate())
+            .totalAmount(contract.getTotalAmount())
+            .filePath(contract.getFilePath())
+            .customerInfo(customerInfo)
+            .orderItems(orderItems)
+            .build();
     }
 }
 

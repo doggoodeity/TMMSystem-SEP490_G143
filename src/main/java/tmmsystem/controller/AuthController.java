@@ -196,35 +196,25 @@ public class AuthController {
     @GetMapping("/customer/profile")
     public ResponseEntity<?> getCustomerProfile(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            // Extract user ID from JWT token
             String token = null;
             if (authHeader != null && !authHeader.isBlank()) {
                 token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader.trim();
+            }
+
+            Customer customer = null;
+            if (token != null && !token.isBlank()) {
+                customer = customerService.getCustomerFromToken(token);
             } else {
                 Authentication auth = SecurityContextHolder.getContext().getAuthentication();
                 if (auth != null && auth.getName() != null) {
-                    // Lấy id qua email khi không có header
-                    Customer customer = customerService.findByEmailOrThrow(auth.getName());
-                    if (customer != null) {
-                        return ResponseEntity.ok(java.util.Map.of(
-                                "customerId", customer.getId(),
-                                "companyName", customer.getCompanyName(),
-                                "contactPerson", customer.getContactPerson(),
-                                "email", customer.getEmail(),
-                                "phoneNumber", customer.getPhoneNumber(),
-                                "address", customer.getAddress(),
-                                "taxCode", customer.getTaxCode(),
-                                "active", customer.getActive(),
-                                "verified", customer.getVerified(),
-                                "registrationType", customer.getRegistrationType()
-                        ));
-                    }
+                    customer = customerService.findByEmailOrThrow(auth.getName());
                 }
-                return ResponseEntity.badRequest().body("Thiếu header Authorization");
             }
-            Long customerId = customerService.getCustomerIdFromToken(token);
 
-            Customer customer = customerService.findById(customerId);
+            if (customer == null) {
+                return ResponseEntity.badRequest().body("Thiếu hoặc sai token. Hãy dùng header Authorization: Bearer <JWT>.");
+            }
+
             return ResponseEntity.ok(java.util.Map.of(
                 "customerId", customer.getId(),
                 "companyName", customer.getCompanyName(),

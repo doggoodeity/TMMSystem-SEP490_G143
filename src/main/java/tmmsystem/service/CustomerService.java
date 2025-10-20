@@ -35,7 +35,8 @@ public class CustomerService {
     }
 
     public List<Customer> findAll() { return customerRepository.findAll(); }
-    public Customer findById(Long id) { return customerRepository.findById(id).orElseThrow(); }
+    public Customer findById(Long id) { return customerRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Customer not found")); }
     public Customer findByEmailOrThrow(String email) { return customerRepository.findByEmail(email).orElseThrow(); }
     public boolean existsByEmail(String email) { return customerRepository.existsByEmail(email); }
 
@@ -108,6 +109,17 @@ public class CustomerService {
             return customerRepository.findByEmail(email)
                     .map(Customer::getId)
                     .orElseThrow(() -> new RuntimeException("Token không hợp lệ"));
+        } catch (Exception ex) {
+            throw new RuntimeException("Token không hợp lệ: " + ex.getMessage());
+        }
+    }
+
+    public Customer getCustomerFromToken(String token) {
+        try {
+            io.jsonwebtoken.Claims claims = jwtService.parseToken(token);
+            String email = claims.getSubject();
+            return customerRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Customer not found for token"));
         } catch (Exception ex) {
             throw new RuntimeException("Token không hợp lệ: " + ex.getMessage());
         }

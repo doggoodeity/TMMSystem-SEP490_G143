@@ -35,6 +35,13 @@ public class ContractController {
     @GetMapping("/{id}")
     public ContractDto get(@PathVariable Long id) { return mapper.toDto(service.findById(id)); }
 
+    @Operation(summary = "Lấy chi tiết đơn hàng",
+            description = "Lấy thông tin chi tiết đơn hàng bao gồm thông tin khách hàng và danh sách sản phẩm")
+    @GetMapping("/{id}/order-details")
+    public tmmsystem.dto.sales.OrderDetailsDto getOrderDetails(@Parameter(description = "ID hợp đồng") @PathVariable Long id) {
+        return service.getOrderDetails(id);
+    }
+
     @Operation(summary = "Tạo hợp đồng")
     @PostMapping
     public ContractDto create(
