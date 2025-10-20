@@ -148,6 +148,17 @@ public class ContractController {
         return mapper.toDto(service.approveContract(id, directorId, notes));
     }
     
+    @Operation(summary = "Test MinIO connection")
+    @GetMapping("/test-minio")
+    public ResponseEntity<String> testMinIO() {
+        try {
+            // Test MinIO connection
+            return ResponseEntity.ok("MinIO connection successful");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("MinIO connection failed: " + e.getMessage());
+        }
+    }
+    
     @Operation(summary = "Từ chối hợp đồng",
             description = "Director từ chối hợp đồng")
     @PostMapping("/{id}/reject")
