@@ -129,10 +129,19 @@ public class ProductionService {
         User planningUser = userRepository.findById(planningUserId)
             .orElseThrow(() -> new RuntimeException("Planning user not found"));
         
+        // Calculate total quantity from quotation details
+        java.math.BigDecimal totalQuantity = java.math.BigDecimal.ZERO;
+        if (contract.getQuotation() != null && contract.getQuotation().getDetails() != null) {
+            for (tmmsystem.entity.QuotationDetail detail : contract.getQuotation().getDetails()) {
+                totalQuantity = totalQuantity.add(detail.getQuantity());
+            }
+        }
+        
         // Create production order
         ProductionOrder po = new ProductionOrder();
         po.setPoNumber("PO-" + System.currentTimeMillis());
         po.setContract(contract);
+        po.setTotalQuantity(totalQuantity);
         po.setPlannedStartDate(plannedStartDate);
         po.setPlannedEndDate(plannedEndDate);
         po.setStatus("PENDING_APPROVAL");
