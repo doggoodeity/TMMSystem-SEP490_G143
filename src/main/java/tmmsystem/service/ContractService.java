@@ -13,6 +13,7 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.util.List;
 import java.util.ArrayList;
+import tmmsystem.service.FileStorageService;
 
 @Service
 @Slf4j
@@ -20,16 +21,16 @@ public class ContractService {
     private final ContractRepository repository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
-    private final MinIOFileService minIOFileService;
+    private final FileStorageService fileStorageService;
 
     public ContractService(ContractRepository repository, 
                          UserRepository userRepository,
                          NotificationService notificationService,
-                         MinIOFileService minIOFileService) { 
+                         FileStorageService fileStorageService) { 
         this.repository = repository; 
         this.userRepository = userRepository;
         this.notificationService = notificationService;
-        this.minIOFileService = minIOFileService;
+        this.fileStorageService = fileStorageService;
     }
 
     public List<Contract> findAll() { return repository.findAll(); }
@@ -67,8 +68,8 @@ public class ContractService {
             .orElseThrow(() -> new RuntimeException("Contract not found"));
         
         try {
-            // Upload file to MinIO
-            String filePath = minIOFileService.uploadContractFile(file, contractId);
+            // Upload file to local storage
+            String filePath = fileStorageService.uploadContractFile(file, contractId);
             
             // Update contract
             contract.setFilePath(filePath);
@@ -141,16 +142,16 @@ public class ContractService {
     
     public String getContractFileUrl(Long contractId) {
         try {
-            return minIOFileService.getContractFileUrl(contractId);
+            return fileStorageService.getContractFileUrl(contractId);
         } catch (Exception e) {
             log.error("Error getting contract file URL for contract ID: {}", contractId, e);
             return null;
         }
     }
     
-    public InputStream downloadContractFile(Long contractId) {
+    public byte[] downloadContractFile(Long contractId) {
         try {
-            return minIOFileService.downloadContractFile(contractId);
+            return fileStorageService.downloadContractFile(contractId);
         } catch (Exception e) {
             log.error("Error downloading contract file for contract ID: {}", contractId, e);
             throw new RuntimeException("Failed to download contract file: " + e.getMessage(), e);

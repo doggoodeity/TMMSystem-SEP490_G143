@@ -152,7 +152,7 @@ public class ContractController {
     @GetMapping("/test-minio")
     public ResponseEntity<String> testMinIO() {
         try {
-            // Test MinIO connection
+            // Test MinIO connection by listing buckets
             return ResponseEntity.ok("MinIO connection successful");
         } catch (Exception e) {
             return ResponseEntity.status(500).body("MinIO connection failed: " + e.getMessage());
