@@ -236,11 +236,39 @@ public class ProductionController {
             @RequestParam String plannedStartDate,
             @RequestParam String plannedEndDate,
             @RequestParam(required = false) String notes) {
+        // Parse dates with multiple format support
+        java.time.LocalDate startDate;
+        java.time.LocalDate endDate;
+        
+        try {
+            // Try parsing as full date first (yyyy-MM-dd)
+            startDate = java.time.LocalDate.parse(plannedStartDate);
+            endDate = java.time.LocalDate.parse(plannedEndDate);
+        } catch (java.time.format.DateTimeParseException e) {
+            try {
+                // Try parsing as dd-MM-yyyy format
+                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy");
+                startDate = java.time.LocalDate.parse(plannedStartDate, formatter);
+                endDate = java.time.LocalDate.parse(plannedEndDate, formatter);
+            } catch (java.time.format.DateTimeParseException ex) {
+                try {
+                    // Try parsing as day only (dd) - assume current month/year
+                    int day = Integer.parseInt(plannedStartDate);
+                    int endDay = Integer.parseInt(plannedEndDate);
+                    java.time.LocalDate now = java.time.LocalDate.now();
+                    startDate = now.withDayOfMonth(day);
+                    endDate = now.withDayOfMonth(endDay);
+                } catch (NumberFormatException ex2) {
+                    throw new IllegalArgumentException("Invalid date format. Supported formats: yyyy-MM-dd, dd-MM-yyyy, or day number (1-31)");
+                }
+            }
+        }
+        
         return mapper.toDto(service.createFromContract(
             contractId, 
             planningUserId, 
-            java.time.LocalDate.parse(plannedStartDate), 
-            java.time.LocalDate.parse(plannedEndDate), 
+            startDate, 
+            endDate, 
             notes));
     }
     
