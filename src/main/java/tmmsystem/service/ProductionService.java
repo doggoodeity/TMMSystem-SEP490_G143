@@ -20,6 +20,8 @@ public class ProductionService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final ContractRepository contractRepository;
+    private final BomRepository bomRepository;
+    private final ProductionOrderDetailRepository productionOrderDetailRepository;
 
     public ProductionService(ProductionOrderRepository poRepo,
                              ProductionOrderDetailRepository podRepo,
@@ -29,12 +31,16 @@ public class ProductionService {
                              ProductionStageRepository stageRepo,
                              UserRepository userRepository,
                              NotificationService notificationService,
-                             ContractRepository contractRepository) {
+                             ContractRepository contractRepository,
+                             BomRepository bomRepository,
+                             ProductionOrderDetailRepository productionOrderDetailRepository) {
         this.poRepo = poRepo; this.podRepo = podRepo; this.techRepo = techRepo;
         this.woRepo = woRepo; this.wodRepo = wodRepo; this.stageRepo = stageRepo;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.contractRepository = contractRepository;
+        this.bomRepository = bomRepository;
+        this.productionOrderDetailRepository = productionOrderDetailRepository;
     }
 
     // Production Order
@@ -149,6 +155,28 @@ public class ProductionService {
         po.setCreatedBy(planningUser);
         
         ProductionOrder savedPO = poRepo.save(po);
+        
+        // Create ProductionOrderDetail from QuotationDetail
+        if (contract.getQuotation() != null && contract.getQuotation().getDetails() != null) {
+            for (tmmsystem.entity.QuotationDetail quotationDetail : contract.getQuotation().getDetails()) {
+                ProductionOrderDetail poDetail = new ProductionOrderDetail();
+                poDetail.setProductionOrder(savedPO);
+                poDetail.setProduct(quotationDetail.getProduct());
+                poDetail.setQuantity(quotationDetail.getQuantity());
+                poDetail.setUnit(quotationDetail.getUnit());
+                poDetail.setNoteColor(quotationDetail.getNoteColor());
+                
+                // Find BOM for this product (get latest version)
+                List<tmmsystem.entity.Bom> boms = bomRepository.findByProductIdOrderByCreatedAtDesc(quotationDetail.getProduct().getId());
+                if (!boms.isEmpty()) {
+                    tmmsystem.entity.Bom bom = boms.get(0);
+                    poDetail.setBom(bom);
+                    poDetail.setBomVersion(bom.getVersion());
+                }
+                
+                productionOrderDetailRepository.save(poDetail);
+            }
+        }
         
         // Send notification to Director
         notificationService.notifyProductionOrderCreated(savedPO);
