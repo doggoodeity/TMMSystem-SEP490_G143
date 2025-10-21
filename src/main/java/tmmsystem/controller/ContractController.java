@@ -179,13 +179,13 @@ public class ContractController {
     @Operation(summary = "Download file hợp đồng",
             description = "Download file hợp đồng trực tiếp")
     @GetMapping(value = "/{id}/download", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    public ResponseEntity<org.springframework.core.io.InputStreamResource> downloadContractFile(
+    public ResponseEntity<byte[]> downloadContractFile(
             @Parameter(description = "ID hợp đồng") @PathVariable Long id) {
         try {
-            java.io.InputStream inputStream = service.downloadContractFile(id);
+            byte[] fileContent = service.downloadContractFile(id);
             return ResponseEntity.ok()
                     .header("Content-Disposition", "attachment; filename=\"contract_" + id + ".pdf\"")
-                    .body(new org.springframework.core.io.InputStreamResource(inputStream));
+                    .body(fileContent);
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }

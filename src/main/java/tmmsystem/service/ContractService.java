@@ -13,7 +13,7 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.util.List;
 import java.util.ArrayList;
-import tmmsystem.service.FileStorageService;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 @Slf4j
@@ -23,6 +23,7 @@ public class ContractService {
     private final NotificationService notificationService;
     private final FileStorageService fileStorageService;
 
+    @Autowired
     public ContractService(ContractRepository repository, 
                          UserRepository userRepository,
                          NotificationService notificationService,
