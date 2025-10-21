@@ -168,11 +168,21 @@ public class ProductionService {
                 
                 // Find BOM for this product (get latest version)
                 List<tmmsystem.entity.Bom> boms = bomRepository.findByProductIdOrderByCreatedAtDesc(quotationDetail.getProduct().getId());
+                tmmsystem.entity.Bom bom;
                 if (!boms.isEmpty()) {
-                    tmmsystem.entity.Bom bom = boms.get(0);
-                    poDetail.setBom(bom);
-                    poDetail.setBomVersion(bom.getVersion());
+                    bom = boms.get(0);
+                } else {
+                    // Create a default BOM if none exists
+                    bom = new tmmsystem.entity.Bom();
+                    bom.setProduct(quotationDetail.getProduct());
+                    bom.setVersion("1.0");
+                    bom.setVersionNotes("Auto-generated default BOM");
+                    bom.setActive(true);
+                    bom.setEffectiveDate(java.time.LocalDate.now());
+                    bom = bomRepository.save(bom);
                 }
+                poDetail.setBom(bom);
+                poDetail.setBomVersion(bom.getVersion());
                 
                 productionOrderDetailRepository.save(poDetail);
             }
