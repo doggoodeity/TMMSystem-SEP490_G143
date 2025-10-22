@@ -1,7 +1,6 @@
 package tmmsystem.dto.auth;
 
 public record CustomerLoginResponse(
-    Long userId,
     String name,
     String email,
     String role,

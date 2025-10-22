@@ -88,7 +88,6 @@ public class CustomerService {
                     ));
                     long expiresIn = jwtService.getExpirationMillis();
                     return new tmmsystem.dto.auth.CustomerLoginResponse(
-                            c.getId(),
                             c.getContactPerson(),
                             c.getEmail(),
                             "CUSTOMER",
