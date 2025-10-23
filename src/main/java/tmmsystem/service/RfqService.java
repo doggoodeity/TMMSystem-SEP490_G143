@@ -124,6 +124,34 @@ public class RfqService {
     public void deleteDetail(Long id) { 
         detailRepository.deleteById(id); 
     }
+    
+    @Transactional
+    public Rfq updateExpectedDeliveryDate(Long id, String expectedDeliveryDate) {
+        Rfq rfq = rfqRepository.findById(id).orElseThrow();
+        
+        // Parse ngày từ string với hỗ trợ 2 định dạng
+        java.time.LocalDate deliveryDate = parseDeliveryDate(expectedDeliveryDate);
+        
+        // Cập nhật chỉ ngày giao hàng mong muốn
+        rfq.setExpectedDeliveryDate(deliveryDate);
+        
+        return rfqRepository.save(rfq);
+    }
+    
+    private java.time.LocalDate parseDeliveryDate(String dateString) {
+        try {
+            // Thử định dạng yyyy-MM-dd trước
+            return java.time.LocalDate.parse(dateString);
+        } catch (java.time.format.DateTimeParseException e1) {
+            try {
+                // Thử định dạng dd-MM-yyyy
+                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy");
+                return java.time.LocalDate.parse(dateString, formatter);
+            } catch (java.time.format.DateTimeParseException e2) {
+                throw new IllegalArgumentException("Ngày không hợp lệ. Hỗ trợ định dạng: yyyy-MM-dd hoặc dd-MM-yyyy. Ví dụ: 2025-05-10 hoặc 10-05-2025");
+            }
+        }
+    }
 
     // RFQ Workflow Methods
     @Transactional

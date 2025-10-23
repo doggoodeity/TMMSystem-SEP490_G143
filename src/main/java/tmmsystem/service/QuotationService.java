@@ -7,6 +7,7 @@ import tmmsystem.repository.*;
 import tmmsystem.dto.sales.QuotationDto;
 import tmmsystem.dto.sales.QuotationDetailDto;
 import tmmsystem.dto.sales.RfqDetailDto;
+import tmmsystem.dto.sales.PriceCalculationDto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -87,6 +88,98 @@ public class QuotationService {
 
     public void delete(Long id) { 
         quotationRepository.deleteById(id); 
+    }
+
+    // Planning Department: Tính giá báo giá từ RFQ (xem trước)
+    public PriceCalculationDto calculateQuotationPrice(Long rfqId, BigDecimal profitMargin) {
+        Rfq rfq = rfqRepository.findById(rfqId).orElseThrow();
+        
+        // Kiểm tra trạng thái RFQ
+        if (!"RECEIVED_BY_PLANNING".equals(rfq.getStatus())) {
+            throw new IllegalStateException("RFQ must be received by planning to calculate price");
+        }
+
+        // Lấy chi tiết RFQ và tính giá
+        List<RfqDetail> rfqDetails = rfqDetailRepository.findByRfqId(rfqId);
+        BigDecimal totalMaterialCost = BigDecimal.ZERO;
+        BigDecimal totalProcessCost = BigDecimal.ZERO;
+        BigDecimal totalBaseCost = BigDecimal.ZERO;
+        BigDecimal finalTotalPrice = BigDecimal.ZERO;
+        
+        List<PriceCalculationDto.ProductPriceDetailDto> productDetails = new java.util.ArrayList<>();
+
+        for (RfqDetail rfqDetail : rfqDetails) {
+            Product product = productRepository.findById(rfqDetail.getProduct().getId()).orElseThrow();
+            
+            // Tính giá theo công thức
+            PriceCalculationDto.ProductPriceDetailDto detail = calculateProductPriceDetail(product, rfqDetail.getQuantity(), profitMargin);
+            productDetails.add(detail);
+            
+            totalMaterialCost = totalMaterialCost.add(detail.getMaterialCostPerUnit().multiply(detail.getQuantity()));
+            totalProcessCost = totalProcessCost.add(detail.getProcessCostPerUnit().multiply(detail.getQuantity()));
+            totalBaseCost = totalBaseCost.add(detail.getBaseCostPerUnit().multiply(detail.getQuantity()));
+            finalTotalPrice = finalTotalPrice.add(detail.getTotalPrice());
+        }
+
+        // Tạo response
+        PriceCalculationDto result = new PriceCalculationDto();
+        result.setTotalMaterialCost(totalMaterialCost);
+        result.setTotalProcessCost(totalProcessCost);
+        result.setTotalBaseCost(totalBaseCost);
+        result.setProfitMargin(profitMargin);
+        result.setFinalTotalPrice(finalTotalPrice);
+        result.setProductDetails(productDetails);
+
+        return result;
+    }
+    
+    // Planning Department: Tính lại giá khi thay đổi profit margin
+    public PriceCalculationDto recalculateQuotationPrice(Long rfqId, BigDecimal profitMargin) {
+        // Sử dụng cùng logic với calculateQuotationPrice nhưng không cần kiểm tra trạng thái RFQ
+        // vì đã được gọi từ form đang mở
+        return calculateQuotationPrice(rfqId, profitMargin);
+    }
+    
+    private PriceCalculationDto.ProductPriceDetailDto calculateProductPriceDetail(Product product, BigDecimal quantity, BigDecimal profitMargin) {
+        PriceCalculationDto.ProductPriceDetailDto detail = new PriceCalculationDto.ProductPriceDetailDto();
+        detail.setProductId(product.getId());
+        detail.setProductName(product.getName());
+        detail.setQuantity(quantity);
+        
+        // Tính trọng lượng đơn vị (kg)
+        BigDecimal unitWeightKg = product.getStandardWeight().divide(new BigDecimal("1000")); // gram to kg
+        detail.setUnitWeight(unitWeightKg);
+        
+        // Xác định thành phần sợi từ tên sản phẩm và tính giá trung bình
+        String productName = product.getName().toLowerCase();
+        BigDecimal materialPricePerKg;
+        
+        if (productName.contains("cotton") && productName.contains("bambo")) {
+            // 50-50 cotton + bamboo
+            BigDecimal cottonAvgPrice = getAverageMaterialPrice("Ne 32/1CD");
+            BigDecimal bambooAvgPrice = getAverageMaterialPrice("Ne 30/1");
+            materialPricePerKg = cottonAvgPrice.add(bambooAvgPrice).divide(new BigDecimal("2"));
+        } else if (productName.contains("bambo")) {
+            // 100% bamboo
+            materialPricePerKg = getAverageMaterialPrice("Ne 30/1");
+        } else {
+            // 100% cotton (mặc định)
+            materialPricePerKg = getAverageMaterialPrice("Ne 32/1CD");
+        }
+
+        // Tính giá theo công thức
+        BigDecimal materialCostPerUnit = unitWeightKg.multiply(materialPricePerKg);
+        BigDecimal processCostPerUnit = unitWeightKg.multiply(PROCESS_COST_PER_KG);
+        BigDecimal baseCostPerUnit = materialCostPerUnit.add(processCostPerUnit);
+        BigDecimal unitPrice = baseCostPerUnit.multiply(profitMargin);
+
+        detail.setMaterialCostPerUnit(materialCostPerUnit);
+        detail.setProcessCostPerUnit(processCostPerUnit);
+        detail.setBaseCostPerUnit(baseCostPerUnit);
+        detail.setUnitPrice(unitPrice);
+        detail.setTotalPrice(unitPrice.multiply(quantity));
+
+        return detail;
     }
 
     // Planning Department: Tạo báo giá từ RFQ

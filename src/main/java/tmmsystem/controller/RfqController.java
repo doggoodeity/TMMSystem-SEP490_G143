@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import jakarta.validation.Valid;
 import tmmsystem.dto.sales.RfqDto;
 import tmmsystem.dto.sales.RfqDetailDto;
 import tmmsystem.dto.sales.CapacityCheckResultDto;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/v1/rfqs")
+@Validated
 public class RfqController {
     private final RfqService service;
     private final RfqMapper mapper;
@@ -58,7 +61,7 @@ public class RfqController {
     public RfqDto create(
             @RequestBody(description = "Payload tạo RFQ", required = true,
                     content = @Content(schema = @Schema(implementation = RfqDto.class)))
-            @org.springframework.web.bind.annotation.RequestBody RfqDto body) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody RfqDto body) {
         Rfq rfq = new Rfq();
         rfq.setRfqNumber(body.getRfqNumber());
         if (body.getCustomerId() != null) { Customer c = new Customer(); c.setId(body.getCustomerId()); rfq.setCustomer(c); }
@@ -78,7 +81,7 @@ public class RfqController {
             @Parameter(description = "ID RFQ") @PathVariable Long id,
             @RequestBody(description = "Payload cập nhật RFQ", required = true,
                     content = @Content(schema = @Schema(implementation = RfqDto.class)))
-            @org.springframework.web.bind.annotation.RequestBody RfqDto body) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody RfqDto body) {
         Rfq rfq = new Rfq();
         rfq.setRfqNumber(body.getRfqNumber());
         if (body.getCustomerId() != null) { Customer c = new Customer(); c.setId(body.getCustomerId()); rfq.setCustomer(c); }
@@ -131,7 +134,7 @@ public class RfqController {
             @Parameter(description = "ID RFQ") @PathVariable Long rfqId,
             @RequestBody(description = "Payload thêm chi tiết RFQ", required = true,
                     content = @Content(schema = @Schema(implementation = RfqDetailDto.class)))
-            @org.springframework.web.bind.annotation.RequestBody RfqDetailDto body) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody RfqDetailDto body) {
         return mapper.toDetailDto(service.addDetail(rfqId, body));
     }
 
@@ -161,6 +164,21 @@ public class RfqController {
     @DeleteMapping("/details/{id}")
     public void deleteDetail(@Parameter(description = "ID chi tiết RFQ") @PathVariable Long id) { 
         service.deleteDetail(id); 
+    }
+    
+    @Operation(summary = "Cập nhật ngày giao hàng mong muốn",
+            description = "Cập nhật ngày giao hàng mong muốn của RFQ. Hỗ trợ 2 định dạng: yyyy-MM-dd (2025-05-10) hoặc dd-MM-yyyy (10-05-2025)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Ngày giao hàng đã được cập nhật",
+                    content = @Content(schema = @Schema(implementation = RfqDto.class))),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy RFQ"),
+            @ApiResponse(responseCode = "400", description = "Ngày không hợp lệ. Hỗ trợ định dạng: yyyy-MM-dd hoặc dd-MM-yyyy")
+    })
+    @PutMapping("/{id}/expected-delivery-date")
+    public RfqDto updateExpectedDeliveryDate(
+            @Parameter(description = "ID RFQ") @PathVariable Long id,
+            @RequestParam("expectedDeliveryDate") String expectedDeliveryDate) {
+        return mapper.toDto(service.updateExpectedDeliveryDate(id, expectedDeliveryDate));
     }
 
     // RFQ Workflow APIs

@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import jakarta.validation.Valid;
 import tmmsystem.dto.inventory.*;
 import tmmsystem.entity.*;
 import tmmsystem.mapper.InventoryMapper;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/v1/inventory")
+@Validated
 public class InventoryController {
     private final InventoryService service;
     private final InventoryMapper mapper;
@@ -31,7 +34,7 @@ public class InventoryController {
     public MaterialStockDto upsertMaterialStock(
             @RequestBody(description = "Payload stock", required = true,
                     content = @Content(schema = @Schema(implementation = MaterialStockDto.class)))
-            @org.springframework.web.bind.annotation.RequestBody MaterialStockDto body) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody MaterialStockDto body) {
         MaterialStock s = new MaterialStock();
         if (body.getMaterialId() != null) { Material m = new Material(); m.setId(body.getMaterialId()); s.setMaterial(m); }
         s.setQuantity(body.getQuantity()); s.setUnit(body.getUnit()); s.setLocation(body.getLocation()); s.setBatchNumber(body.getBatchNumber()); s.setReceivedDate(body.getReceivedDate()); s.setExpiryDate(body.getExpiryDate());
@@ -50,7 +53,7 @@ public class InventoryController {
     public MaterialTransactionDto createMaterialTxn(
             @RequestBody(description = "Payload transaction", required = true,
                     content = @Content(schema = @Schema(implementation = MaterialTransactionDto.class)))
-            @org.springframework.web.bind.annotation.RequestBody MaterialTransactionDto body) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody MaterialTransactionDto body) {
         MaterialTransaction t = new MaterialTransaction();
         if (body.getMaterialId() != null) { Material m = new Material(); m.setId(body.getMaterialId()); t.setMaterial(m); }
         t.setTransactionType(body.getTransactionType()); t.setQuantity(body.getQuantity()); t.setUnit(body.getUnit());

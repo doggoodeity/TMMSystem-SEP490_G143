@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import jakarta.validation.Valid;
 import tmmsystem.dto.product.*;
 import tmmsystem.entity.*;
 import tmmsystem.mapper.ProductMapper;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/v1/products")
+@Validated
 public class ProductController {
     private final ProductService service;
     private final ProductMapper mapper;
@@ -31,7 +34,7 @@ public class ProductController {
     public ProductDto createProduct(
             @RequestBody(description = "Payload tạo product", required = true,
                     content = @Content(schema = @Schema(implementation = ProductDto.class)))
-            @org.springframework.web.bind.annotation.RequestBody ProductDto body) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody ProductDto body) {
         Product e = new Product();
         e.setCode(body.getCode()); e.setName(body.getName()); e.setDescription(body.getDescription());
         if (body.getCategoryId() != null) { ProductCategory c = new ProductCategory(); c.setId(body.getCategoryId()); e.setCategory(c); }
@@ -40,7 +43,7 @@ public class ProductController {
         return mapper.toDto(service.createProduct(e));
     }
     @PutMapping("/{id}")
-    public ProductDto updateProduct(@PathVariable Long id, @RequestBody ProductDto body) {
+    public ProductDto updateProduct(@PathVariable Long id, @Valid @RequestBody ProductDto body) {
         Product e = new Product();
         e.setCode(body.getCode()); e.setName(body.getName()); e.setDescription(body.getDescription());
         if (body.getCategoryId() != null) { ProductCategory c = new ProductCategory(); c.setId(body.getCategoryId()); e.setCategory(c); }

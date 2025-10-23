@@ -8,8 +8,12 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import jakarta.validation.Valid;
 import tmmsystem.dto.sales.QuotationDto;
 import tmmsystem.dto.sales.CreateQuotationRequest;
+import tmmsystem.dto.sales.PriceCalculationDto;
+import tmmsystem.dto.sales.RecalculatePriceRequest;
 
 import java.math.BigDecimal;
 import tmmsystem.entity.Customer;
@@ -23,6 +27,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/v1/quotations")
+@Validated
 public class QuotationController {
     private final QuotationService service;
     private final QuotationMapper mapper;
@@ -61,7 +66,7 @@ public class QuotationController {
     public QuotationDto create(
             @RequestBody(description = "Payload tạo báo giá", required = true,
                     content = @Content(schema = @Schema(implementation = QuotationDto.class)))
-            @org.springframework.web.bind.annotation.RequestBody QuotationDto body) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody QuotationDto body) {
         Quotation q = new Quotation();
         q.setQuotationNumber(body.getQuotationNumber());
         if (body.getRfqId() != null) { Rfq r = new Rfq(); r.setId(body.getRfqId()); q.setRfq(r); }
@@ -82,7 +87,7 @@ public class QuotationController {
             @PathVariable Long id,
             @RequestBody(description = "Payload cập nhật báo giá", required = true,
                     content = @Content(schema = @Schema(implementation = QuotationDto.class)))
-            @org.springframework.web.bind.annotation.RequestBody QuotationDto body) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody QuotationDto body) {
         Quotation q = new Quotation();
         q.setQuotationNumber(body.getQuotationNumber());
         if (body.getRfqId() != null) { Rfq r = new Rfq(); r.setId(body.getRfqId()); q.setRfq(r); }
@@ -101,13 +106,37 @@ public class QuotationController {
     public void delete(@PathVariable Long id) { service.delete(id); }
 
     // Planning Department APIs
+    @Operation(summary = "Tính giá báo giá từ RFQ",
+            description = "Planning Department tính giá báo giá từ RFQ để xem trước trước khi tạo báo giá chính thức")
+    @PostMapping("/calculate-price")
+    public PriceCalculationDto calculatePrice(
+            @RequestBody(description = "Thông tin tính giá", required = true,
+                    content = @Content(schema = @Schema(implementation = CreateQuotationRequest.class)))
+            @Valid @org.springframework.web.bind.annotation.RequestBody CreateQuotationRequest request) {
+        return service.calculateQuotationPrice(
+                request.getRfqId(), 
+                request.getProfitMargin());
+    }
+    
+    @Operation(summary = "Tính lại giá khi thay đổi profit margin",
+            description = "Tính lại giá báo giá khi user thay đổi % lợi nhuận, trả về tổng giá mới")
+    @PostMapping("/recalculate-price")
+    public PriceCalculationDto recalculatePrice(
+            @RequestBody(description = "Thông tin tính lại giá", required = true,
+                    content = @Content(schema = @Schema(implementation = RecalculatePriceRequest.class)))
+            @Valid @org.springframework.web.bind.annotation.RequestBody RecalculatePriceRequest request) {
+        return service.recalculateQuotationPrice(
+                request.getRfqId(), 
+                request.getProfitMargin());
+    }
+    
     @Operation(summary = "Planning tạo báo giá từ RFQ",
             description = "Planning Department tạo báo giá từ RFQ đã nhận, tự động tính giá theo công thức với lợi nhuận có thể thay đổi")
     @PostMapping("/create-from-rfq")
     public QuotationDto createFromRfq(
             @RequestBody(description = "Thông tin tạo báo giá", required = true,
                     content = @Content(schema = @Schema(implementation = CreateQuotationRequest.class)))
-            @org.springframework.web.bind.annotation.RequestBody CreateQuotationRequest request) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody CreateQuotationRequest request) {
         return mapper.toDto(service.createQuotationFromRfq(
                 request.getRfqId(), 
                 request.getPlanningUserId(), 

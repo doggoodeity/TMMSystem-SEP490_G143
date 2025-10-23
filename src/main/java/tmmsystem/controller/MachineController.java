@@ -6,6 +6,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import jakarta.validation.Valid;
 import tmmsystem.dto.MachineDto;
 import tmmsystem.dto.machine.MachineRequest;
 import tmmsystem.mapper.MachineMapper;
@@ -16,6 +18,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/v1/machines")
+@Validated
 public class MachineController {
     private final MachineService service;
     private final MachineMapper mapper;
@@ -32,7 +35,7 @@ public class MachineController {
     public MachineDto create(
             @RequestBody(description = "Payload tạo máy", required = true,
                     content = @Content(schema = @Schema(implementation = MachineRequest.class)))
-            @org.springframework.web.bind.annotation.RequestBody MachineRequest body) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody MachineRequest body) {
         tmmsystem.entity.Machine e = new tmmsystem.entity.Machine();
         e.setCode(body.getCode());
         e.setName(body.getName());
@@ -52,7 +55,7 @@ public class MachineController {
             @PathVariable Long id,
             @RequestBody(description = "Payload cập nhật máy", required = true,
                     content = @Content(schema = @Schema(implementation = MachineRequest.class)))
-            @org.springframework.web.bind.annotation.RequestBody MachineRequest body) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody MachineRequest body) {
         tmmsystem.entity.Machine e = new tmmsystem.entity.Machine();
         e.setCode(body.getCode());
         e.setName(body.getName());

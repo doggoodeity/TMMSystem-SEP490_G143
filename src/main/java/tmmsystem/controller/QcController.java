@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import jakarta.validation.Valid;
 import tmmsystem.dto.qc.*;
 import tmmsystem.entity.*;
 import tmmsystem.mapper.QcMapper;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/v1/qc")
+@Validated
 public class QcController {
     private final QcService service;
     private final QcMapper mapper;
@@ -33,7 +36,7 @@ public class QcController {
     public QcCheckpointDto createCheckpoint(
             @RequestBody(description = "Payload tạo checkpoint", required = true,
                     content = @Content(schema = @Schema(implementation = QcCheckpointDto.class)))
-            @org.springframework.web.bind.annotation.RequestBody QcCheckpointDto body) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody QcCheckpointDto body) {
         QcCheckpoint e = new QcCheckpoint();
         e.setStageType(body.getStageType()); e.setCheckpointName(body.getCheckpointName());
         e.setInspectionCriteria(body.getInspectionCriteria()); e.setSamplingPlan(body.getSamplingPlan());
@@ -61,7 +64,7 @@ public class QcController {
     public QcInspectionDto createInspection(
             @RequestBody(description = "Payload tạo inspection", required = true,
                     content = @Content(schema = @Schema(implementation = QcInspectionDto.class)))
-            @org.springframework.web.bind.annotation.RequestBody QcInspectionDto body) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody QcInspectionDto body) {
         QcInspection e = new QcInspection();
         if (body.getProductionStageId() != null) { ProductionStage s = new ProductionStage(); s.setId(body.getProductionStageId()); e.setProductionStage(s); }
         if (body.getQcCheckpointId() != null) { QcCheckpoint cp = new QcCheckpoint(); cp.setId(body.getQcCheckpointId()); e.setQcCheckpoint(cp); }

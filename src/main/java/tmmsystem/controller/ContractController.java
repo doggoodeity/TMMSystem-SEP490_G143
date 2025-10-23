@@ -10,6 +10,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import jakarta.validation.Valid;
 import org.springframework.web.multipart.MultipartFile;
 import tmmsystem.dto.sales.ContractDto;
 import tmmsystem.entity.Customer;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/v1/contracts")
+@Validated
 public class ContractController {
     private final ContractService service;
     private final ContractMapper mapper;

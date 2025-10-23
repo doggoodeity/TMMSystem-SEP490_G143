@@ -33,3 +33,5 @@ build/
 !**/src/test/**/build/
 ### VS Code ###
 .vscode/
+/ssh_github_key_tmms
+/ssh_github_key_tmms.pub
