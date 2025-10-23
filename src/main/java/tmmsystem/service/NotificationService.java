@@ -139,16 +139,18 @@ public class NotificationService {
 
     @Transactional
     public void notifyQuotationSentToCustomer(Quotation quotation) {
-        // Thông báo cho Customer
-        if (quotation.getCustomer() != null) {
+        // Thông báo cho Sale Staff rằng báo giá đã được gửi cho khách hàng
+        List<User> saleStaff = userRepository.findByRoleName("SALE_STAFF");
+        
+        for (User user : saleStaff) {
             Notification notification = new Notification();
-            notification.setUser(new User()); // Customer notification
-            notification.getUser().setId(quotation.getCustomer().getId());
+            notification.setUser(user);
             notification.setType("INFO");
             notification.setCategory("ORDER");
-            notification.setTitle("Báo giá mới");
-            notification.setMessage("Bạn có báo giá mới #" + quotation.getQuotationNumber() + " với tổng giá trị " + 
-                quotation.getTotalAmount() + " VND");
+            notification.setTitle("Báo giá đã gửi cho khách hàng");
+            notification.setMessage("Báo giá #" + quotation.getQuotationNumber() + " đã được gửi cho khách hàng " + 
+                (quotation.getCustomer() != null ? quotation.getCustomer().getCompanyName() : "N/A") + 
+                " với tổng giá trị " + quotation.getTotalAmount() + " VND");
             notification.setReferenceType("QUOTATION");
             notification.setReferenceId(quotation.getId());
             notification.setRead(false);
