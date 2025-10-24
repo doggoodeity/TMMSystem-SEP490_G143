@@ -11,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.validation.annotation.Validated;
-import jakarta.validation.Valid;
 import org.springframework.web.multipart.MultipartFile;
 import tmmsystem.dto.sales.ContractDto;
 import tmmsystem.entity.Customer;
@@ -186,8 +185,9 @@ public class ContractController {
             @Parameter(description = "ID hợp đồng") @PathVariable Long id) {
         try {
             byte[] fileContent = service.downloadContractFile(id);
+            String fileName = service.getContractFileName(id);
             return ResponseEntity.ok()
-                    .header("Content-Disposition", "attachment; filename=\"contract_" + id + ".pdf\"")
+                    .header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
                     .body(fileContent);
         } catch (Exception e) {
             return ResponseEntity.notFound().build();

@@ -23,14 +23,14 @@ public class FileController {
         this.fileStorageService = fileStorageService;
     }
     
-    @Operation(summary = "Download file by filename")
+    @Operation(summary = "Get file by filename - Display inline for images, download for others")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "File downloaded successfully"),
+            @ApiResponse(responseCode = "200", description = "File retrieved successfully"),
             @ApiResponse(responseCode = "404", description = "File not found")
     })
     @GetMapping("/{filename}")
-    public ResponseEntity<byte[]> downloadFile(
-            @Parameter(description = "Filename to download") @PathVariable String filename) {
+    public ResponseEntity<byte[]> getFile(
+            @Parameter(description = "Filename to retrieve") @PathVariable String filename) {
         try {
             byte[] fileContent = fileStorageService.getFileByFilename(filename);
             
@@ -39,7 +39,13 @@ public class FileController {
             
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType(contentType));
-            headers.setContentDispositionFormData("attachment", filename);
+            
+            // For images, display inline; for other files, download
+            if (contentType.startsWith("image/")) {
+                headers.setContentDispositionFormData("inline", filename);
+            } else {
+                headers.setContentDispositionFormData("attachment", filename);
+            }
             
             return ResponseEntity.ok()
                     .headers(headers)

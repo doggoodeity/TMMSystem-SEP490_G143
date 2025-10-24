@@ -9,7 +9,6 @@ import tmmsystem.repository.ContractRepository;
 import tmmsystem.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.InputStream;
 import java.time.Instant;
 import java.util.List;
 import java.util.ArrayList;
@@ -156,6 +155,15 @@ public class ContractService {
         } catch (Exception e) {
             log.error("Error downloading contract file for contract ID: {}", contractId, e);
             throw new RuntimeException("Failed to download contract file: " + e.getMessage(), e);
+        }
+    }
+    
+    public String getContractFileName(Long contractId) {
+        try {
+            return fileStorageService.getContractFileName(contractId);
+        } catch (Exception e) {
+            log.error("Error getting contract file name for contract ID: {}", contractId, e);
+            throw new RuntimeException("Failed to get contract file name: " + e.getMessage(), e);
         }
     }
     

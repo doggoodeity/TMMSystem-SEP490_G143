@@ -10,8 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.time.Instant;
-import java.util.UUID;
 
 @Service
 @Slf4j
@@ -89,6 +87,23 @@ public class FileStorageService {
     }
     
     /**
+     * Get contract file name for download
+     */
+    public String getContractFileName(Long contractId) throws IOException {
+        Path contractDir = Paths.get(storagePath, "contracts", contractId.toString());
+        if (!Files.exists(contractDir)) {
+            throw new IOException("Contract directory not found");
+        }
+        
+        // Find the first file in the contract directory
+        return Files.list(contractDir)
+                .filter(Files::isRegularFile)
+                .findFirst()
+                .map(path -> path.getFileName().toString())
+                .orElseThrow(() -> new IOException("Contract file not found"));
+    }
+    
+    /**
      * Upload production order file
      */
     public String uploadProductionOrderFile(MultipartFile file, Long productionOrderId) throws IOException {
@@ -161,7 +176,7 @@ public class FileStorageService {
     }
     
     /**
-     * Validate uploaded file
+     * Validate uploaded file - Only allow image files
      */
     private void validateFile(MultipartFile file) {
         if (file.isEmpty()) {
@@ -173,12 +188,10 @@ public class FileStorageService {
             throw new IllegalArgumentException("File size exceeds 10MB limit");
         }
         
-        // Check file type
+        // Check file type - Only allow image files
         String contentType = file.getContentType();
-        if (contentType == null || 
-            (!contentType.equals("application/pdf") && 
-             !contentType.startsWith("image/"))) {
-            throw new IllegalArgumentException("Only PDF and image files are allowed");
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("Only image files are allowed (JPG, PNG, GIF, BMP, WEBP)");
         }
     }
     
