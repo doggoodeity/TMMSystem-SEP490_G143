@@ -2,14 +2,19 @@ package tmmsystem.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import tmmsystem.entity.Product;
 import tmmsystem.entity.ProductCategory;
+import tmmsystem.entity.User;
+import tmmsystem.entity.Customer;
 import tmmsystem.repository.MachineRepository;
 import tmmsystem.repository.ProductRepository;
 import tmmsystem.repository.ProductCategoryRepository;
 import tmmsystem.repository.MaterialRepository;
 import tmmsystem.repository.MaterialStockRepository;
+import tmmsystem.repository.UserRepository;
+import tmmsystem.repository.CustomerRepository;
 import tmmsystem.entity.Material;
 import tmmsystem.entity.MaterialStock;
 
@@ -19,7 +24,6 @@ import java.util.Random;
 import java.math.BigDecimal;
 
 
-/*
 @Component
 public class DataInitializer implements CommandLineRunner {
 	@Autowired
@@ -36,13 +40,26 @@ public class DataInitializer implements CommandLineRunner {
 
 	@Autowired
 	private MaterialStockRepository materialStockRepository;
+
+	@Autowired
+	private UserRepository userRepository;
+
+	@Autowired
+	private CustomerRepository customerRepository;
+
+	@Autowired
+	private PasswordEncoder passwordEncoder;
     
 	@Override
 	public void run(String... args) throws Exception {
 		// Chỉ tạo dữ liệu cơ bản, không xóa dữ liệu cũ
-		createSampleMachines();
-        createSampleCategoriesAndProducts();
-		createSampleMaterials();
+		// createSampleMachines();
+        // createSampleCategoriesAndProducts();
+		// createSampleMaterials();
+		
+		// Đổi mật khẩu tất cả user và customer thành "Abcd1234"
+		resetAllUserPasswords();
+		resetAllCustomerPasswords();
 	}
 	
 
@@ -207,5 +224,42 @@ public class DataInitializer implements CommandLineRunner {
     private BigDecimal bd(long vnd) {
         return new BigDecimal(Long.toString(vnd));
     }
+
+    /**
+     * Đổi mật khẩu tất cả User thành "Abcd1234"
+     */
+    private void resetAllUserPasswords() {
+        String newPassword = "Abcd1234";
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        
+        java.util.List<User> allUsers = userRepository.findAll();
+        int updatedCount = 0;
+        
+        for (User user : allUsers) {
+            user.setPassword(encodedPassword);
+            userRepository.save(user);
+            updatedCount++;
+        }
+        
+        System.out.println("Đã đổi mật khẩu " + updatedCount + " User thành '" + newPassword + "'");
+    }
+
+    /**
+     * Đổi mật khẩu tất cả Customer thành "Abcd1234"
+     */
+    private void resetAllCustomerPasswords() {
+        String newPassword = "Abcd1234";
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        
+        java.util.List<Customer> allCustomers = customerRepository.findAll();
+        int updatedCount = 0;
+        
+        for (Customer customer : allCustomers) {
+            customer.setPassword(encodedPassword);
+            customerRepository.save(customer);
+            updatedCount++;
+        }
+        
+        System.out.println("Đã đổi mật khẩu " + updatedCount + " Customer thành '" + newPassword + "'");
+    }
 }
-*/

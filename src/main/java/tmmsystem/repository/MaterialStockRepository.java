@@ -7,6 +7,5 @@ import java.util.List;
 
 public interface MaterialStockRepository extends JpaRepository<MaterialStock, Long> {
     List<MaterialStock> findByMaterialId(Long materialId);
+    List<MaterialStock> findByMaterialIdAndLocation(Long materialId, String location);
 }
-
-

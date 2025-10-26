@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.validation.annotation.Validated;
-import jakarta.validation.Valid;
 import tmmsystem.dto.production.*;
 import tmmsystem.entity.*;
 import tmmsystem.mapper.ProductionMapper;
@@ -233,6 +232,7 @@ public class ProductionController {
     @Operation(summary = "Tạo lệnh sản xuất từ hợp đồng",
             description = "Planning Department tạo lệnh sản xuất từ hợp đồng đã duyệt")
     @PostMapping("/orders/create-from-contract")
+    @SuppressWarnings("deprecation")
     public ProductionOrderDto createFromContract(
             @RequestParam Long contractId,
             @RequestParam Long planningUserId,
@@ -325,6 +325,29 @@ public class ProductionController {
             @RequestParam Long directorId,
             @RequestParam String rejectionNotes) {
         return mapper.toDto(service.rejectProductionOrder(id, directorId, rejectionNotes));
+    }
+    
+    // ===== PRODUCTION PLAN INTEGRATION ENDPOINTS =====
+    
+    @Operation(summary = "Get production plans for contract",
+            description = "Retrieve all production plans for a specific contract")
+    @GetMapping("/contracts/{contractId}/plans")
+    public List<tmmsystem.dto.production_plan.ProductionPlanDto> getProductionPlansForContract(@PathVariable Long contractId) {
+        return service.getProductionPlansForContract(contractId);
+    }
+    
+    @Operation(summary = "Create production order from approved plan",
+            description = "Create production order from an approved production plan")
+    @PostMapping("/plans/{planId}/create-order")
+    public ProductionOrderDto createOrderFromApprovedPlan(@PathVariable Long planId) {
+        return mapper.toDto(service.createFromApprovedPlan(planId));
+    }
+    
+    @Operation(summary = "Get production plans pending approval",
+            description = "Retrieve all production plans waiting for director approval")
+    @GetMapping("/plans/pending-approval")
+    public List<tmmsystem.dto.production_plan.ProductionPlanDto> getProductionPlansPendingApproval() {
+        return service.getProductionPlansPendingApproval();
     }
 }
 

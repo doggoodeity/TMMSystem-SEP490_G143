@@ -19,9 +19,13 @@ public class ProductionService {
     private final ProductionStageRepository stageRepo;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    @SuppressWarnings("unused")
     private final ContractRepository contractRepository;
+    @SuppressWarnings("unused")
     private final BomRepository bomRepository;
+    @SuppressWarnings("unused")
     private final ProductionOrderDetailRepository productionOrderDetailRepository;
+    private final ProductionPlanService productionPlanService;
 
     public ProductionService(ProductionOrderRepository poRepo,
                              ProductionOrderDetailRepository podRepo,
@@ -33,7 +37,8 @@ public class ProductionService {
                              NotificationService notificationService,
                              ContractRepository contractRepository,
                              BomRepository bomRepository,
-                             ProductionOrderDetailRepository productionOrderDetailRepository) {
+                             ProductionOrderDetailRepository productionOrderDetailRepository,
+                             ProductionPlanService productionPlanService) {
         this.poRepo = poRepo; this.podRepo = podRepo; this.techRepo = techRepo;
         this.woRepo = woRepo; this.wodRepo = wodRepo; this.stageRepo = stageRepo;
         this.userRepository = userRepository;
@@ -41,6 +46,7 @@ public class ProductionService {
         this.contractRepository = contractRepository;
         this.bomRepository = bomRepository;
         this.productionOrderDetailRepository = productionOrderDetailRepository;
+        this.productionPlanService = productionPlanService;
     }
 
     // Production Order
@@ -125,73 +131,35 @@ public class ProductionService {
 
     // ===== GIAI ĐOẠN 4: PRODUCTION ORDER CREATION & APPROVAL =====
     
+    // ===== GIAI ĐOẠN 4: PRODUCTION ORDER CREATION & APPROVAL (NEW WORKFLOW) =====
+    
+    /**
+     * @deprecated Use ProductionPlanService.createPlanFromContract() instead
+     * This method is kept for backward compatibility but will redirect to new workflow
+     */
+    @Deprecated
     @Transactional
     public ProductionOrder createFromContract(Long contractId, Long planningUserId, 
                                            LocalDate plannedStartDate, LocalDate plannedEndDate, String notes) {
-        // Get contract details
-        Contract contract = contractRepository.findById(contractId)
-            .orElseThrow(() -> new RuntimeException("Contract not found"));
-        
-        User planningUser = userRepository.findById(planningUserId)
-            .orElseThrow(() -> new RuntimeException("Planning user not found"));
-        
-        // Calculate total quantity from quotation details
-        java.math.BigDecimal totalQuantity = java.math.BigDecimal.ZERO;
-        if (contract.getQuotation() != null && contract.getQuotation().getDetails() != null) {
-            for (tmmsystem.entity.QuotationDetail detail : contract.getQuotation().getDetails()) {
-                totalQuantity = totalQuantity.add(detail.getQuantity());
-            }
-        }
-        
-        // Create production order
-        ProductionOrder po = new ProductionOrder();
-        po.setPoNumber("PO-" + System.currentTimeMillis());
-        po.setContract(contract);
-        po.setTotalQuantity(totalQuantity);
-        po.setPlannedStartDate(plannedStartDate);
-        po.setPlannedEndDate(plannedEndDate);
-        po.setStatus("PENDING_APPROVAL");
-        po.setNotes(notes);
-        po.setCreatedBy(planningUser);
-        
-        ProductionOrder savedPO = poRepo.save(po);
-        
-        // Create ProductionOrderDetail from QuotationDetail
-        if (contract.getQuotation() != null && contract.getQuotation().getDetails() != null) {
-            for (tmmsystem.entity.QuotationDetail quotationDetail : contract.getQuotation().getDetails()) {
-                ProductionOrderDetail poDetail = new ProductionOrderDetail();
-                poDetail.setProductionOrder(savedPO);
-                poDetail.setProduct(quotationDetail.getProduct());
-                poDetail.setQuantity(quotationDetail.getQuantity());
-                poDetail.setUnit(quotationDetail.getUnit());
-                poDetail.setNoteColor(quotationDetail.getNoteColor());
-                
-                // Find BOM for this product (get latest version)
-                List<tmmsystem.entity.Bom> boms = bomRepository.findByProductIdOrderByCreatedAtDesc(quotationDetail.getProduct().getId());
-                tmmsystem.entity.Bom bom;
-                if (!boms.isEmpty()) {
-                    bom = boms.get(0);
-                } else {
-                    // Create a default BOM if none exists
-                    bom = new tmmsystem.entity.Bom();
-                    bom.setProduct(quotationDetail.getProduct());
-                    bom.setVersion("1.0");
-                    bom.setVersionNotes("Auto-generated default BOM");
-                    bom.setActive(true);
-                    bom.setEffectiveDate(java.time.LocalDate.now());
-                    bom = bomRepository.save(bom);
-                }
-                poDetail.setBom(bom);
-                poDetail.setBomVersion(bom.getVersion());
-                
-                productionOrderDetailRepository.save(poDetail);
-            }
-        }
-        
-        // Send notification to Director
-        notificationService.notifyProductionOrderCreated(savedPO);
-        
-        return savedPO;
+        // Redirect to new Production Plan workflow
+        throw new UnsupportedOperationException(
+            "Direct Production Order creation from contract is deprecated. " +
+            "Please use Production Plan workflow: " +
+            "1. Create Production Plan via ProductionPlanService.createPlanFromContract() " +
+            "2. Submit for approval " +
+            "3. Approve to automatically create Production Order"
+        );
+    }
+    
+    /**
+     * New method: Create Production Order from approved Production Plan
+     * This method is called automatically by ProductionPlanService when plan is approved
+     */
+    @Transactional
+    public ProductionOrder createFromApprovedPlan(Long planId) {
+        // This method will be implemented to create PO from approved Production Plan
+        // For now, delegate to ProductionPlanService
+        return productionPlanService.createProductionOrderFromApprovedPlan(planId);
     }
     
     @Transactional
@@ -241,6 +209,16 @@ public class ProductionService {
     
     public List<ProductionOrder> getDirectorPendingProductionOrders() {
         return poRepo.findByStatus("PENDING_APPROVAL");
+    }
+    
+    // ===== PRODUCTION PLAN INTEGRATION METHODS =====
+    
+    public List<tmmsystem.dto.production_plan.ProductionPlanDto> getProductionPlansForContract(Long contractId) {
+        return productionPlanService.findPlansByContract(contractId);
+    }
+    
+    public List<tmmsystem.dto.production_plan.ProductionPlanDto> getProductionPlansPendingApproval() {
+        return productionPlanService.findPendingApprovalPlans();
     }
 }
 

@@ -8,5 +8,3 @@ import java.util.List;
 public interface MaterialRequisitionDetailRepository extends JpaRepository<MaterialRequisitionDetail, Long> {
     List<MaterialRequisitionDetail> findByRequisitionId(Long requisitionId);
 }
-
-

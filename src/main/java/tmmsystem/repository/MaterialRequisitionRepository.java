@@ -3,8 +3,9 @@ package tmmsystem.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import tmmsystem.entity.MaterialRequisition;
 
+import java.util.List;
+
 public interface MaterialRequisitionRepository extends JpaRepository<MaterialRequisition, Long> {
-    boolean existsByRequisitionNumber(String requisitionNumber);
+    List<MaterialRequisition> findByStatus(String status);
+    List<MaterialRequisition> findByRequestedById(Long requestedById);
 }
-
-

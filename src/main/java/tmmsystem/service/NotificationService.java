@@ -353,4 +353,108 @@ public class NotificationService {
             notificationRepository.save(notification);
         }
     }
+    
+    // ===== PRODUCTION PLAN WORKFLOW NOTIFICATIONS =====
+    
+    @Transactional
+    public void notifyProductionPlanCreated(tmmsystem.entity.ProductionPlan plan) {
+        // Thông báo cho Director
+        List<User> directors = userRepository.findByRoleName("DIRECTOR");
+        
+        for (User user : directors) {
+            Notification notification = new Notification();
+            notification.setUser(user);
+            notification.setType("INFO");
+            notification.setCategory("PRODUCTION");
+            notification.setTitle("Kế hoạch sản xuất mới được tạo");
+            notification.setMessage("Kế hoạch sản xuất #" + plan.getPlanCode() + " đã được Planning tạo và sẵn sàng để duyệt");
+            notification.setReferenceType("PRODUCTION_PLAN");
+            notification.setReferenceId(plan.getId());
+            notification.setRead(false);
+            notification.setCreatedAt(Instant.now());
+            
+            notificationRepository.save(notification);
+        }
+    }
+    
+    @Transactional
+    public void notifyProductionPlanSubmittedForApproval(tmmsystem.entity.ProductionPlan plan) {
+        // Thông báo cho Director
+        List<User> directors = userRepository.findByRoleName("DIRECTOR");
+        
+        for (User user : directors) {
+            Notification notification = new Notification();
+            notification.setUser(user);
+            notification.setType("WARNING");
+            notification.setCategory("PRODUCTION");
+            notification.setTitle("Kế hoạch sản xuất chờ duyệt");
+            notification.setMessage("Kế hoạch sản xuất #" + plan.getPlanCode() + " đã được Planning gửi để duyệt");
+            notification.setReferenceType("PRODUCTION_PLAN");
+            notification.setReferenceId(plan.getId());
+            notification.setRead(false);
+            notification.setCreatedAt(Instant.now());
+            
+            notificationRepository.save(notification);
+        }
+    }
+    
+    @Transactional
+    public void notifyProductionPlanApproved(tmmsystem.entity.ProductionPlan plan) {
+        // Thông báo cho Planning Department
+        List<User> planningStaff = userRepository.findByRoleName("PLANNING_STAFF");
+        
+        for (User user : planningStaff) {
+            Notification notification = new Notification();
+            notification.setUser(user);
+            notification.setType("SUCCESS");
+            notification.setCategory("PRODUCTION");
+            notification.setTitle("Kế hoạch sản xuất đã được duyệt");
+            notification.setMessage("Kế hoạch sản xuất #" + plan.getPlanCode() + " đã được Director duyệt và Production Order đã được tạo tự động");
+            notification.setReferenceType("PRODUCTION_PLAN");
+            notification.setReferenceId(plan.getId());
+            notification.setRead(false);
+            notification.setCreatedAt(Instant.now());
+            
+            notificationRepository.save(notification);
+        }
+        
+        // Thông báo cho Production Team về Production Order mới
+        List<User> productionStaff = userRepository.findByRoleName("PRODUCTION_STAFF");
+        
+        for (User user : productionStaff) {
+            Notification notification = new Notification();
+            notification.setUser(user);
+            notification.setType("INFO");
+            notification.setCategory("PRODUCTION");
+            notification.setTitle("Production Order mới từ kế hoạch đã duyệt");
+            notification.setMessage("Production Order đã được tạo từ kế hoạch sản xuất #" + plan.getPlanCode() + " đã được duyệt");
+            notification.setReferenceType("PRODUCTION_PLAN");
+            notification.setReferenceId(plan.getId());
+            notification.setRead(false);
+            notification.setCreatedAt(Instant.now());
+            
+            notificationRepository.save(notification);
+        }
+    }
+    
+    @Transactional
+    public void notifyProductionPlanRejected(tmmsystem.entity.ProductionPlan plan) {
+        // Thông báo cho Planning Department
+        List<User> planningStaff = userRepository.findByRoleName("PLANNING_STAFF");
+        
+        for (User user : planningStaff) {
+            Notification notification = new Notification();
+            notification.setUser(user);
+            notification.setType("WARNING");
+            notification.setCategory("PRODUCTION");
+            notification.setTitle("Kế hoạch sản xuất bị từ chối");
+            notification.setMessage("Kế hoạch sản xuất #" + plan.getPlanCode() + " đã bị Director từ chối, cần chỉnh sửa");
+            notification.setReferenceType("PRODUCTION_PLAN");
+            notification.setReferenceId(plan.getId());
+            notification.setRead(false);
+            notification.setCreatedAt(Instant.now());
+            
+            notificationRepository.save(notification);
+        }
+    }
 }

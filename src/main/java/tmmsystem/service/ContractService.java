@@ -21,16 +21,19 @@ public class ContractService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final FileStorageService fileStorageService;
+    private final ProductionPlanService productionPlanService;
 
     @Autowired
     public ContractService(ContractRepository repository, 
                          UserRepository userRepository,
                          NotificationService notificationService,
-                         FileStorageService fileStorageService) { 
+                         FileStorageService fileStorageService,
+                         ProductionPlanService productionPlanService) { 
         this.repository = repository; 
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.fileStorageService = fileStorageService;
+        this.productionPlanService = productionPlanService;
     }
 
     public List<Contract> findAll() { return repository.findAll(); }
@@ -103,6 +106,15 @@ public class ContractService {
         contract.setUpdatedAt(Instant.now());
         
         Contract savedContract = repository.save(contract);
+        
+        // Automatically create Production Plan for approved contract
+        try {
+            createProductionPlanForContract(savedContract);
+        } catch (Exception e) {
+            log.error("Failed to create production plan for contract {}: {}", contractId, e.getMessage());
+            // Don't fail the contract approval if production plan creation fails
+            // Just log the error and continue
+        }
         
         // Send notification to Planning Department
         notificationService.notifyContractApproved(savedContract);
@@ -212,6 +224,59 @@ public class ContractService {
             .customerInfo(customerInfo)
             .orderItems(orderItems)
             .build();
+    }
+    
+    /**
+     * Create a basic Production Plan for approved contract
+     * This method creates a draft production plan that Planning Department can then customize
+     */
+    private void createProductionPlanForContract(Contract contract) {
+        try {
+            // Check if production plan already exists for this contract
+            if (productionPlanService.findPlansByContract(contract.getId()).size() > 0) {
+                log.info("Production plan already exists for contract {}", contract.getId());
+                return;
+            }
+            
+            // Create a basic production plan request
+            tmmsystem.dto.production_plan.CreateProductionPlanRequest request = 
+                new tmmsystem.dto.production_plan.CreateProductionPlanRequest();
+            request.setContractId(contract.getId());
+            request.setNotes("Auto-generated from approved contract: " + contract.getContractNumber());
+            
+            // Create basic plan details from quotation details
+            if (contract.getQuotation() != null && contract.getQuotation().getDetails() != null) {
+                List<tmmsystem.dto.production_plan.ProductionPlanDetailRequest> details = new ArrayList<>();
+                
+                for (tmmsystem.entity.QuotationDetail quotationDetail : contract.getQuotation().getDetails()) {
+                    tmmsystem.dto.production_plan.ProductionPlanDetailRequest detailRequest = 
+                        new tmmsystem.dto.production_plan.ProductionPlanDetailRequest();
+                    
+                    detailRequest.setProductId(quotationDetail.getProduct().getId());
+                    detailRequest.setPlannedQuantity(quotationDetail.getQuantity());
+                    detailRequest.setRequiredDeliveryDate(contract.getDeliveryDate());
+                    
+                    // Set proposed dates (can be adjusted by Planning Department)
+                    detailRequest.setProposedStartDate(java.time.LocalDate.now().plusDays(7)); // Start in 1 week
+                    detailRequest.setProposedEndDate(contract.getDeliveryDate().minusDays(3)); // End 3 days before delivery
+                    
+                    detailRequest.setNotes("Auto-generated from quotation detail");
+                    
+                    details.add(detailRequest);
+                }
+                
+                request.setDetails(details);
+            }
+            
+            // Create the production plan
+            productionPlanService.createPlanFromContract(request);
+            
+            log.info("Successfully created production plan for contract {}", contract.getId());
+            
+        } catch (Exception e) {
+            log.error("Error creating production plan for contract {}: {}", contract.getId(), e.getMessage(), e);
+            throw e;
+        }
     }
 }
 
