@@ -37,6 +37,7 @@ function App() {
             <Route path="/internal/quotations" element={<QuotesList />} />
             <Route path="/internal/quotations/:id" element={<QuoteDetail />} />
             <Route path="/internal/quote-requests" element={<QuoteRequests />} />
+            <Route path="/internal/rfqs/:id" element={<RFQDetail />} />
 
             {/* Customer routes - NO AUTH GUARD */}
             <Route path="/customer/dashboard" element={<CustomerDashboard />} />
@@ -45,7 +46,7 @@ function App() {
 
             {/* Planning routes - NO AUTH GUARD */}
             <Route path="/planning/quote-requests" element={<PlanningQuoteRequests />} />
-            <Route path="/planning/rfq/:id" element={<PlanningRFQDetail />} />
+            <Route path="/planning/rfqs/:id" element={<PlanningRFQDetail />} />
 
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/login" />} />
