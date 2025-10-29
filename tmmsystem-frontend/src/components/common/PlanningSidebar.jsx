@@ -17,9 +17,7 @@ const PlanningSidebar = () => {
     navigate(path);
   };
 
-  const isActiveRoute = (path) => {
-    return location.pathname === path;
-  };
+  const isActiveRoute = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`);
 
   return (
     <div className="internal-sidebar bg-light shadow-sm" style={{ width: '250px', minHeight: 'calc(100vh - 70px)' }}>
@@ -44,13 +42,13 @@ const PlanningSidebar = () => {
             Đơn hàng
           </Nav.Link>
           
-          <Nav.Link 
-            className={`sidebar-link py-3 ${isActiveRoute('/planning/production-orders') ? 'active' : ''}`}
-            onClick={() => handleNavClick('/planning/production-orders')}
+          <Nav.Link
+            className={`sidebar-link py-3 ${isActiveRoute('/planning/production-plans') ? 'active' : ''}`}
+            onClick={() => handleNavClick('/planning/production-plans')}
             style={{ cursor: 'pointer' }}
           >
             <FaIndustry className="me-3" />
-            Lệnh Sản Xuất
+            Kế hoạch sản xuất
           </Nav.Link>
           
           <Nav.Link 

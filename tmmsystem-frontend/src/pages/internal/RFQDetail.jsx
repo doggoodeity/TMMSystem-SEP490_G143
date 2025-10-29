@@ -63,8 +63,20 @@ const RFQDetail = () => {
   };
 
   const handleSendRFQ = async () => {
-    if (rfqData?.status === 'SENT') {
-      setError('RFQ này đã được gửi đến Phòng Kế hoạch rồi.');
+    if (!rfqData) {
+      setError('Không tìm thấy thông tin RFQ để gửi.');
+      return;
+    }
+
+    if ([
+      'FORWARDED_TO_PLANNING',
+      'RECEIVED_BY_PLANNING',
+      'QUOTED',
+      'APPROVED',
+      'REJECTED',
+      'CANCELED'
+    ].includes(rfqData.status)) {
+      setError('RFQ này không thể gửi lại vì đã được xử lý trong quy trình tiếp theo.');
       return;
     }
 
@@ -73,27 +85,56 @@ const RFQDetail = () => {
     setSuccess('');
 
     try {
-      console.log('Sending RFQ to Planning Department...');
-      const updatedRFQ = await quoteService.sendRFQToPlanningDepartment(id);
-      
-      // Update local state
-      setRFQData(prevData => ({
-        ...prevData,
-        status: 'SENT',
-        isSent: true,
-        ...updatedRFQ
-      }));
-      
-      setSuccess('✅ RFQ đã được gửi thành công đến Phòng Kế hoạch!');
-      
-      // Auto-hide success message after 5 seconds
+      console.log('=== START RFQ FORWARDING WORKFLOW ===');
+      let latestData = { ...rfqData };
+      const completedSteps = [];
+
+      if (latestData.status === 'DRAFT') {
+        console.log('RFQ hiện ở trạng thái DRAFT → gọi /send');
+        const sentResult = await quoteService.sendRfq(id);
+        latestData = { ...latestData, ...sentResult };
+        completedSteps.push('Gửi yêu cầu');
+      }
+
+      if (latestData.status === 'SENT') {
+        console.log('RFQ hiện ở trạng thái SENT → gọi /preliminary-check');
+        const checkedResult = await quoteService.preliminaryCheck(id);
+        latestData = { ...latestData, ...checkedResult };
+        completedSteps.push('Kiểm tra sơ bộ');
+      }
+
+      if (latestData.status === 'PRELIMINARY_CHECKED') {
+        console.log('RFQ hiện ở trạng thái PRELIMINARY_CHECKED → gọi /forward-to-planning');
+        const forwardedResult = await quoteService.sendRFQToPlanningDepartment(id);
+        latestData = { ...latestData, ...forwardedResult };
+        completedSteps.push('Chuyển đến Phòng Kế hoạch');
+      }
+
+      // Refresh data from backend to make sure we show the latest workflow status
+      try {
+        const refreshedData = await quoteService.getRFQDetails(id);
+        if (refreshedData) {
+          latestData = refreshedData;
+        }
+      } catch (refreshError) {
+        console.warn('Không thể làm mới dữ liệu RFQ sau khi gửi:', refreshError);
+      }
+
+      setRFQData(latestData);
+
+      if (latestData.status === 'FORWARDED_TO_PLANNING' || latestData.status === 'RECEIVED_BY_PLANNING') {
+        const stepsDescription = completedSteps.length ? ` (các bước: ${completedSteps.join(' → ')})` : '';
+        setSuccess(`✅ RFQ đã được chuyển thành công đến Phòng Kế hoạch${stepsDescription}.`);
+      } else {
+        setSuccess('✅ RFQ đã được xử lý thành công.');
+      }
+
       setTimeout(() => {
         setSuccess('');
       }, 5000);
-      
     } catch (error) {
       console.error('Send RFQ error:', error);
-      setError('❌ ' + error.message);
+      setError('❌ ' + (error.message || 'Lỗi khi gửi RFQ đến Phòng Kế hoạch'));
     } finally {
       setSendingRFQ(false);
     }
@@ -101,23 +142,50 @@ const RFQDetail = () => {
 
   const getStatusDisplay = (status) => {
     switch (status) {
-      case 'DRAFT': return 'Chờ xử lý';
-      case 'SENT': return 'Đã gửi';
-      case 'QUOTED': return 'Đã báo giá';
-      case 'APPROVED': return 'Đã duyệt';
-      case 'REJECTED': return 'Từ chối';
-      default: return status || 'Chờ xử lý';
+      case 'DRAFT':
+        return 'Chờ xử lý';
+      case 'SENT':
+        return 'Đã gửi';
+      case 'PRELIMINARY_CHECKED':
+        return 'Đã kiểm tra sơ bộ';
+      case 'FORWARDED_TO_PLANNING':
+        return 'Đã chuyển kế hoạch';
+      case 'RECEIVED_BY_PLANNING':
+        return 'Phòng Kế hoạch đã nhận';
+      case 'QUOTED':
+        return 'Đã báo giá';
+      case 'APPROVED':
+        return 'Đã duyệt';
+      case 'REJECTED':
+        return 'Từ chối';
+      case 'CANCELED':
+        return 'Đã hủy';
+      default:
+        return status || 'Chờ xử lý';
     }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'DRAFT': return 'warning';
-      case 'SENT': return 'primary';
-      case 'QUOTED': return 'info';
-      case 'APPROVED': return 'success';
-      case 'REJECTED': return 'danger';
-      default: return 'secondary';
+      case 'DRAFT':
+        return 'warning';
+      case 'SENT':
+        return 'primary';
+      case 'PRELIMINARY_CHECKED':
+        return 'info';
+      case 'FORWARDED_TO_PLANNING':
+      case 'RECEIVED_BY_PLANNING':
+        return 'secondary';
+      case 'QUOTED':
+        return 'info';
+      case 'APPROVED':
+        return 'success';
+      case 'REJECTED':
+        return 'danger';
+      case 'CANCELED':
+        return 'dark';
+      default:
+        return 'secondary';
     }
   };
 
@@ -131,7 +199,8 @@ const RFQDetail = () => {
   };
 
   const canSendRFQ = () => {
-    return rfqData?.status === 'DRAFT' && !rfqData?.isSent;
+    if (!rfqData) return false;
+    return ['DRAFT', 'SENT', 'PRELIMINARY_CHECKED'].includes(rfqData.status);
   };
 
   if (loading) {

@@ -6,6 +6,11 @@ import QuoteManagement from './pages/internal/QuoteManagement';
 import QuotesList from './pages/internal/QuotesList';
 import CustomerQuotationDetail from './pages/customer/CustomerQuotationDetail';
 import QuoteDetail from './pages/internal/QuoteDetail';
+import ContractUpload from './pages/internal/ContractUpload';
+import DirectorContractApproval from './pages/director/ContractApproval';
+import PlanningProductionPlans from './pages/planning/ProductionPlans';
+import PlanningProductionPlanDetail from './pages/planning/ProductionPlanDetail';
+import DirectorProductionPlanApprovals from './pages/director/ProductionPlanApprovals';
 
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
@@ -37,15 +42,27 @@ function App() {
             <Route path="/internal/quotations" element={<QuotesList />} />
             <Route path="/internal/quotations/:id" element={<QuoteDetail />} />
             <Route path="/internal/quote-requests" element={<QuoteRequests />} />
-
+            <Route path="/internal/rfq/:id" element={<RFQDetail />} />
+            <Route path="/internal/quotes/management" element={<QuoteManagement />} />
+            
             {/* Customer routes - NO AUTH GUARD */}
             <Route path="/customer/dashboard" element={<CustomerDashboard />} />
+            <Route path="/customer/quote-request" element={<QuoteRequest />} />
             <Route path="/customer/quotations" element={<CustomerQuotations />} />
             <Route path="/customer/quotations/:id" element={<CustomerQuotationDetail />} />
 
             {/* Planning routes - NO AUTH GUARD */}
             <Route path="/planning/quote-requests" element={<PlanningQuoteRequests />} />
             <Route path="/planning/rfq/:id" element={<PlanningRFQDetail />} />
+            <Route path="/planning/production-plans" element={<PlanningProductionPlans />} />
+            <Route path="/planning/production-plans/:id" element={<PlanningProductionPlanDetail />} />
+
+            {/* Contract workflow */}
+            <Route path="/internal/contracts" element={<ContractUpload />} />
+            <Route path="/director/contracts" element={<DirectorContractApproval />} />
+
+            {/* Production plan approvals */}
+            <Route path="/director/production-plans" element={<DirectorProductionPlanApprovals />} />
 
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/login" />} />
