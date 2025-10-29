@@ -1,6 +1,6 @@
 import React from 'react';
 import { Nav } from 'react-bootstrap';
-import { FaUserTie, FaFileInvoice, FaShoppingCart, FaTruck, FaClipboardList, FaReceipt } from 'react-icons/fa';
+import { FaUserTie, FaFileInvoice, FaShoppingCart, FaTruck, FaClipboardList, FaReceipt, FaFileSignature } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const InternalSidebar = () => {
@@ -18,19 +18,29 @@ const InternalSidebar = () => {
       icon: FaClipboardList,
       label: 'Yêu cầu báo giá',
       path: '/internal/quote-requests',
-      isActive: location.pathname === '/internal/quote-requests' || location.pathname.includes('/internal/rfq-detail')
+      isActive:
+        location.pathname === '/internal/quote-requests' ||
+        location.pathname.startsWith('/internal/rfq/')
     },
     {
       icon: FaReceipt, // New icon for Báo giá list
       label: 'Báo giá',
       path: '/internal/quotations',
-      isActive: location.pathname === '/internal/quotations' || location.pathname.includes('/internal/quotations/')
+      isActive: location.pathname === '/internal/quotations' || location.pathname.startsWith('/internal/quotations/')
     },
     {
       icon: FaFileInvoice,
       label: 'Quản lý báo giá',
       path: '/internal/quotes/management',
-      isActive: location.pathname === '/internal/quotes/management' || location.pathname.includes('/internal/quote-detail')
+      isActive:
+        location.pathname === '/internal/quotes/management' ||
+        location.pathname.startsWith('/internal/quote-detail')
+    },
+    {
+      icon: FaFileSignature,
+      label: 'Hợp đồng',
+      path: '/internal/contracts',
+      isActive: location.pathname.startsWith('/internal/contracts')
     },
     {
       icon: FaShoppingCart,
@@ -56,9 +66,8 @@ const InternalSidebar = () => {
               <Nav.Link
                 key={index}
                 href="#"
-                className={`sidebar-item d-flex align-items-center py-3 px-3 mb-1 rounded ${
-                  item.isActive ? 'bg-dark text-white' : 'text-dark'
-                }`}
+                className={`sidebar-item d-flex align-items-center py-3 px-3 mb-1 rounded ${item.isActive ? 'bg-dark text-white' : 'text-dark'
+                  }`}
                 onClick={(e) => {
                   e.preventDefault();
                   navigate(item.path);

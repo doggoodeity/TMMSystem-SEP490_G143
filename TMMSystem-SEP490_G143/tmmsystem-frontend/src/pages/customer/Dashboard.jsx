@@ -9,11 +9,9 @@ import '../../styles/CustomerHomePage.css';
 
 function CustomerDashboard() {
     const [products, setProducts] = useState([]);
-    const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const [selectedCategory, setSelectedCategory] = useState('all');
     const productsPerPage = 9;
 
     useEffect(() => {
@@ -28,7 +26,6 @@ function CustomerDashboard() {
                 console.log('First product structure:', productData?.[0]);
                 console.log('All fields in first product:', Object.keys(productData?.[0] || {}));
                 setProducts(productData || []);
-                setCategories([]); // Empty categories for now
             } catch (err) {
                 setError(err.message || 'Lỗi khi tải dữ liệu.');
             } finally {
@@ -41,10 +38,7 @@ function CustomerDashboard() {
 
 
 
-    const filteredProducts =
-        selectedCategory === 'all'
-            ? products
-            : products.filter((p) => p.categoryId?.toString() === selectedCategory);
+    const filteredProducts = products;
 
     const indexOfLastProduct = currentPage * productsPerPage;
     const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
@@ -56,11 +50,6 @@ function CustomerDashboard() {
             setCurrentPage(pageNumber);
             window.scrollTo(0, 0);
         }
-    };
-
-    const handleCategoryChange = (e) => {
-        setSelectedCategory(e.target.value);
-        setCurrentPage(1);
     };
 
     return (

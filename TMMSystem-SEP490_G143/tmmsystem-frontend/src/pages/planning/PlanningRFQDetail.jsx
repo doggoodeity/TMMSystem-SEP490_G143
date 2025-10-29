@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Table, Button, Alert, Spinner, Modal, Form } from 'react-bootstrap';
 import { FaArrowLeft, FaCogs, FaFileInvoice, FaTimes } from 'react-icons/fa';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -70,47 +70,6 @@ const PlanningRFQDetail = () => {
     fetchRFQDetails();
   }, [id]);
 
-  // New useEffect to fetch pricing data when modal opens
-  useEffect(() => {
-    const fetchPricingData = async () => {
-      if (showQuoteModal && id) {
-        try {
-          console.log('Fetching pricing data for RFQ:', id);
-          const pricing = await quoteService.getQuotePricing(id);
-
-          setPricingData(pricing);
-          setQuoteData(prev => ({
-            ...prev,
-            materialCost: pricing.materialCost || 0,
-            finishingCost: pricing.finishingCost || 0
-          }));
-
-          // Calculate initial total
-          if (pricing.materialCost && pricing.finishingCost) {
-            calculatePriceWithAPI(0); // Start with 0% profit margin
-          }
-
-        } catch (error) {
-          console.error('Error fetching pricing data:', error);
-          // Use fallback data for demo
-          const fallbackPricing = {
-            materialCost: 150000,
-            finishingCost: 50000
-          };
-          setPricingData(fallbackPricing);
-          setQuoteData(prev => ({
-            ...prev,
-            materialCost: fallbackPricing.materialCost,
-            finishingCost: fallbackPricing.finishingCost
-          }));
-          calculatePriceWithAPI(0);
-        }
-      }
-    };
-
-    fetchPricingData();
-  }, [showQuoteModal, id]);
-
   const handleGoBack = () => {
     navigate('/planning/quote-requests');
   };
@@ -158,24 +117,71 @@ const PlanningRFQDetail = () => {
     setCalculatedTotal(0);
   };
 
-  // Updated price calculation with API
-  const calculatePriceWithAPI = async (profitMargin) => {
-    try {
-      if (!id) return 0;
+  const { materialCost, processingCost, finishingCost, profitMargin } = quoteData;
 
-      const calculation = await quoteService.calculateQuotePrice(id, profitMargin || 0);
-      setCalculatedTotal(calculation.totalAmount || 0);
-      return calculation.totalAmount || 0;
-    } catch (error) {
-      console.error('Price calculation error:', error);
-      // Fallback calculation
-      const baseCosts = quoteData.materialCost + quoteData.processingCost + quoteData.finishingCost;
-      const profit = baseCosts * ((profitMargin || 0) / 100);
-      const total = baseCosts + profit;
-      setCalculatedTotal(total);
-      return total;
-    }
-  };
+  // Updated price calculation with API
+  const calculatePriceWithAPI = useCallback(
+    async (customMargin) => {
+      try {
+        if (!id) return 0;
+
+      const requestedMargin = parseFloat(customMargin ?? profitMargin) || 0;
+        const calculation = await quoteService.calculateQuotePrice(parseInt(id, 10), requestedMargin);
+        const total = calculation.totalAmount || 0;
+        setCalculatedTotal(total);
+        return total;
+      } catch (error) {
+        console.error('Price calculation error:', error);
+        const baseCosts = (materialCost || 0) + (processingCost || 0) + (finishingCost || 0);
+        const requestedMargin = parseFloat(customMargin ?? profitMargin) || 0;
+        const total = baseCosts + baseCosts * (requestedMargin / 100);
+        setCalculatedTotal(total);
+        return total;
+      }
+    },
+    [id, materialCost, processingCost, finishingCost, profitMargin]
+  );
+
+  // New useEffect to fetch pricing data when modal opens
+  useEffect(() => {
+    const fetchPricingData = async () => {
+      if (showQuoteModal && id) {
+        try {
+          console.log('Fetching pricing data for RFQ:', id);
+          const pricing = await quoteService.getQuotePricing(id);
+
+          setPricingData(pricing);
+          setQuoteData(prev => ({
+            ...prev,
+            materialCost: pricing.materialCost || 0,
+            finishingCost: pricing.finishingCost || 0
+          }));
+
+          // Calculate initial total
+          if (pricing.materialCost && pricing.finishingCost) {
+            calculatePriceWithAPI(0); // Start with 0% profit margin
+          }
+
+        } catch (error) {
+          console.error('Error fetching pricing data:', error);
+          // Use fallback data for demo
+          const fallbackPricing = {
+            materialCost: 150000,
+            finishingCost: 50000
+          };
+          setPricingData(fallbackPricing);
+          setQuoteData(prev => ({
+            ...prev,
+            materialCost: fallbackPricing.materialCost,
+            finishingCost: fallbackPricing.finishingCost
+          }));
+          calculatePriceWithAPI(0);
+        }
+      }
+    };
+
+    fetchPricingData();
+  }, [showQuoteModal, id, calculatePriceWithAPI]);
 
   const handleQuoteInputChange = async (field, value) => {
     setQuoteData(prev => ({
